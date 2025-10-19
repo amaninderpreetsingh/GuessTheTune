@@ -1,0 +1,14 @@
+{
+  "name": "guessthetune",
+  "version": "1.0.0",
+  "description": "A real-time social music trivia game",
+  "scripts": {
+    "install-all": "cd server && npm install && cd ../client && npm install",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "dev": "echo 'Please run the server and client in separate terminals:' && echo 'Terminal 1: npm run server' && echo 'Terminal 2: npm run client'"
+  },
+  "keywords": ["game", "music", "trivia", "spotify", "multiplayer"],
+  "author": "",
+  "license": "MIT"
+}

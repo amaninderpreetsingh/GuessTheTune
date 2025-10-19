@@ -1,0 +1,286 @@
+/**
+ * In-memory game state manager
+ * Handles all game room logic and state
+ */
+
+const rooms = new Map();
+
+/**
+ * Generates a random 4-letter room code
+ * @returns {string} 4-letter room code
+ */
+function generateRoomCode() {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let code = '';
+  for (let i = 0; i < 4; i++) {
+    code += letters.charAt(Math.floor(Math.random() * letters.length));
+  }
+  // Check if code already exists, regenerate if it does
+  return rooms.has(code) ? generateRoomCode() : code;
+}
+
+/**
+ * Creates a new game room
+ * @param {string} hostSocketId - Socket ID of the host
+ * @param {string} hostDisplayName - Display name of the host
+ * @returns {Object} Created room object
+ */
+function createRoom(hostSocketId, hostDisplayName) {
+  const roomCode = generateRoomCode();
+
+  const room = {
+    id: roomCode,
+    hostSocketId,
+    players: [
+      {
+        socketId: hostSocketId,
+        displayName: hostDisplayName,
+        score: 0,
+        isHost: true,
+      },
+    ],
+    gameState: 'lobby', // lobby, playing, guessing, gameOver
+    playlist: null,
+    currentTrackIndex: 0,
+    currentGuesser: null,
+    currentJudgeIndex: 1, // Start with first non-host player
+    createdAt: Date.now(),
+  };
+
+  rooms.set(roomCode, room);
+  return room;
+}
+
+/**
+ * Adds a player to an existing room
+ * @param {string} roomCode - Room code to join
+ * @param {string} socketId - Socket ID of the player
+ * @param {string} displayName - Display name of the player
+ * @returns {Object|null} Updated room object or null if room not found
+ */
+function joinRoom(roomCode, socketId, displayName) {
+  const room = rooms.get(roomCode);
+
+  if (!room) {
+    return null;
+  }
+
+  if (room.gameState !== 'lobby') {
+    throw new Error('Cannot join a game in progress');
+  }
+
+  // Check if player already in room
+  const existingPlayer = room.players.find(p => p.socketId === socketId);
+  if (existingPlayer) {
+    return room;
+  }
+
+  room.players.push({
+    socketId,
+    displayName,
+    score: 0,
+    isHost: false,
+  });
+
+  return room;
+}
+
+/**
+ * Starts the game
+ * @param {string} roomCode - Room code
+ * @param {Array} playlist - Array of track objects
+ */
+function startGame(roomCode, playlist) {
+  const room = rooms.get(roomCode);
+
+  if (!room) {
+    throw new Error('Room not found');
+  }
+
+  // Shuffle the playlist
+  const shuffledPlaylist = [...playlist].sort(() => Math.random() - 0.5);
+
+  room.gameState = 'playing';
+  room.playlist = shuffledPlaylist;
+  room.currentTrackIndex = 0;
+}
+
+/**
+ * Handles a player buzzing in
+ * @param {string} roomCode - Room code
+ * @param {string} socketId - Socket ID of the player buzzing in
+ * @returns {Object} Result object with success status and player info
+ */
+function handleBuzzIn(roomCode, socketId) {
+  const room = rooms.get(roomCode);
+
+  if (!room) {
+    return { success: false, message: 'Room not found' };
+  }
+
+  if (room.gameState !== 'playing') {
+    return { success: false, message: 'Game is not in playing state' };
+  }
+
+  if (room.currentGuesser) {
+    return { success: false, message: 'Someone is already guessing' };
+  }
+
+  // Check if this is the current judge
+  const currentJudge = room.players[room.currentJudgeIndex];
+  if (currentJudge && currentJudge.socketId === socketId) {
+    return { success: false, message: 'Judge cannot buzz in' };
+  }
+
+  const player = room.players.find(p => p.socketId === socketId);
+
+  if (!player) {
+    return { success: false, message: 'Player not found in room' };
+  }
+
+  room.currentGuesser = socketId;
+  room.gameState = 'guessing';
+
+  return { success: true, player };
+}
+
+/**
+ * Clears the current guesser (when time expires)
+ * @param {string} roomCode - Room code
+ */
+function clearGuesser(roomCode) {
+  const room = rooms.get(roomCode);
+
+  if (room) {
+    room.currentGuesser = null;
+    room.gameState = 'playing';
+  }
+}
+
+/**
+ * Handles judge's decision on a guess
+ * @param {string} roomCode - Room code
+ * @param {string} judgeSocketId - Socket ID of the judge
+ * @param {boolean} isCorrect - Whether the guess was correct
+ * @returns {Object} Result object
+ */
+function submitJudgment(roomCode, judgeSocketId, isCorrect) {
+  const room = rooms.get(roomCode);
+
+  if (!room) {
+    return { success: false, message: 'Room not found' };
+  }
+
+  const currentJudge = room.players[room.currentJudgeIndex];
+
+  if (!currentJudge || currentJudge.socketId !== judgeSocketId) {
+    return { success: false, message: 'You are not the current judge' };
+  }
+
+  const guesser = room.players.find(p => p.socketId === room.currentGuesser);
+
+  if (!guesser) {
+    return { success: false, message: 'No active guesser' };
+  }
+
+  if (isCorrect) {
+    guesser.score += 1;
+
+    // Check for winner
+    if (guesser.score >= 10) {
+      room.gameState = 'gameOver';
+      return {
+        success: true,
+        gameOver: true,
+        winner: guesser,
+        room,
+      };
+    }
+  }
+
+  // Rotate judge (skip host)
+  room.currentJudgeIndex = (room.currentJudgeIndex + 1) % room.players.length;
+  if (room.players[room.currentJudgeIndex].isHost) {
+    room.currentJudgeIndex = (room.currentJudgeIndex + 1) % room.players.length;
+  }
+
+  room.currentGuesser = null;
+  room.gameState = 'playing';
+
+  return {
+    success: true,
+    gameOver: false,
+    guesser,
+    room,
+  };
+}
+
+/**
+ * Moves to the next song in the playlist
+ * @param {string} roomCode - Room code
+ */
+function nextSong(roomCode) {
+  const room = rooms.get(roomCode);
+
+  if (room && room.playlist) {
+    room.currentTrackIndex = (room.currentTrackIndex + 1) % room.playlist.length;
+    room.currentGuesser = null;
+    room.gameState = 'playing';
+  }
+}
+
+/**
+ * Handles player disconnect
+ * @param {string} socketId - Socket ID of disconnected player
+ * @returns {Object|null} Information about the disconnect
+ */
+function handleDisconnect(socketId) {
+  for (const [roomCode, room] of rooms.entries()) {
+    const playerIndex = room.players.findIndex(p => p.socketId === socketId);
+
+    if (playerIndex !== -1) {
+      const wasHost = room.players[playerIndex].isHost;
+      room.players.splice(playerIndex, 1);
+
+      // If room is empty or host left, delete the room
+      if (room.players.length === 0 || wasHost) {
+        rooms.delete(roomCode);
+        return { roomCode, wasHost, room: null };
+      }
+
+      return { roomCode, wasHost, room };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Gets a room by code
+ * @param {string} roomCode - Room code
+ * @returns {Object|undefined} Room object or undefined
+ */
+function getRoom(roomCode) {
+  return rooms.get(roomCode);
+}
+
+/**
+ * Deletes a room
+ * @param {string} roomCode - Room code
+ */
+function deleteRoom(roomCode) {
+  rooms.delete(roomCode);
+}
+
+module.exports = {
+  createRoom,
+  joinRoom,
+  startGame,
+  handleBuzzIn,
+  clearGuesser,
+  submitJudgment,
+  nextSong,
+  handleDisconnect,
+  getRoom,
+  deleteRoom,
+};
