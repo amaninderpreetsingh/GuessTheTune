@@ -7,7 +7,7 @@ import JudgeControls from './JudgeControls';
 import WinnerModal from './WinnerModal';
 import { SOCKET_EVENTS } from '../utils/constants';
 
-const GameplayView = ({ roomCode, playlistTracks }) => {
+const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
   const { socket, isHost, players, setPlayers, room, setRoom } = useGame();
   const [currentGuesser, setCurrentGuesser] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
@@ -283,7 +283,7 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
                   <p className="text-green-400 mb-3 font-semibold">
                     🎵 Music is playing!
                   </p>
-                  <div className="flex justify-center space-x-4">
+                  <div className="flex justify-center space-x-4 mb-4"> {/* Added mb-4 for spacing */}
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -315,6 +315,15 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
                       </motion.button>
                     )}
                   </div>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onChangePlaylist}
+                    className="btn-tertiary" // Assuming btn-tertiary exists or needs to be defined
+                    disabled={currentGuesser !== null}
+                  >
+                    Change Playlist
+                  </motion.button>
                 </>
               )}
               <p className="text-xs text-secondary-text mt-2">

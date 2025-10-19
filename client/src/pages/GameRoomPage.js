@@ -23,6 +23,7 @@ const GameRoomPage = () => {
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [playlistTracks, setPlaylistTracks] = useState([]);
   const [currentView, setCurrentView] = useState('playlist'); // playlist, playing
+  const [shufflePlaylist, setShufflePlaylist] = useState(true); // New state for shuffling
 
   const roomCode = globalRoomCode || urlRoomCode;
 
@@ -82,13 +83,16 @@ const GameRoomPage = () => {
 
   const handleStartGame = () => {
     if (!socket || !selectedPlaylist || playlistTracks.length === 0) {
+      console.log('Start Game conditions not met:', { socket: !!socket, selectedPlaylist: !!selectedPlaylist, playlistTracksLength: playlistTracks.length });
       return;
     }
 
+    console.log('Emitting startGame event with:', { roomCode, playlist: playlistTracks.length, shuffle: shufflePlaylist });
     // Emit start game event
     socket.emit('startGame', {
       roomCode,
       playlist: playlistTracks,
+      shuffle: shufflePlaylist, // Include shuffle preference
     });
   };
 
@@ -133,6 +137,16 @@ const GameRoomPage = () => {
                       animate={{ opacity: 1, y: 0 }}
                       className="mt-6 text-center"
                     >
+                      <label className="inline-flex items-center cursor-pointer mb-4">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={shufflePlaylist}
+                          onChange={(e) => setShufflePlaylist(e.target.checked)}
+                        />
+                        <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-spotify-green-light dark:peer-focus:ring-spotify-green rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-spotify-green"></div>
+                        <span className="ms-3 text-lg font-medium text-white">Shuffle Playlist</span>
+                      </label>
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -174,6 +188,7 @@ const GameRoomPage = () => {
                   <GameplayView
                     roomCode={roomCode}
                     playlistTracks={playlistTracks}
+                    onChangePlaylist={() => setCurrentView('playlist')} // New prop
                   />
                 </motion.div>
               )}

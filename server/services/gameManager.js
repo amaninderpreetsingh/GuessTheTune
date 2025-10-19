@@ -95,18 +95,21 @@ function joinRoom(roomCode, socketId, displayName) {
  * @param {string} roomCode - Room code
  * @param {Array} playlist - Array of track objects
  */
-function startGame(roomCode, playlist) {
+function startGame(roomCode, playlist, shuffle = true) { // Added shuffle parameter with default true
   const room = rooms.get(roomCode);
 
   if (!room) {
     throw new Error('Room not found');
   }
 
-  // Shuffle the playlist
-  const shuffledPlaylist = [...playlist].sort(() => Math.random() - 0.5);
+  let finalPlaylist = playlist;
+  if (shuffle) {
+    // Shuffle the playlist
+    finalPlaylist = [...playlist].sort(() => Math.random() - 0.5);
+  }
 
   room.gameState = 'playing';
-  room.playlist = shuffledPlaylist;
+  room.playlist = finalPlaylist;
   room.currentTrackIndex = 0;
 }
 

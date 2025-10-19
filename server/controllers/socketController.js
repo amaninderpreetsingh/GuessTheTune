@@ -100,18 +100,21 @@ function setupSocketHandlers(io) {
      * Start the game
      * Only the host can start the game
      */
-    socket.on('startGame', ({ roomCode, playlist }) => {
+    socket.on('startGame', ({ roomCode, playlist, shuffle }) => {
+      console.log('Received startGame event:', { roomCode, playlistLength: playlist.length, shuffle });
       const room = gameManager.getRoom(roomCode);
 
       if (!room) {
+        console.log('startGame: Room not found for roomCode:', roomCode);
         return;
       }
 
       if (room.hostSocketId !== socket.id) {
+        console.log('startGame: Socket ID does not match hostSocketId for room:', roomCode);
         return;
       }
 
-      gameManager.startGame(roomCode, playlist);
+      gameManager.startGame(roomCode, playlist, shuffle);
 
       // Notify all players in the room
       io.to(roomCode).emit('gameStarted', {
