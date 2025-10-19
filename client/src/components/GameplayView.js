@@ -16,6 +16,13 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackStatus, setPlaybackStatus] = useState('initializing'); // initializing, waiting, starting, playing, error
   const playbackInitiatedRef = useRef(false);
+  const [currentTrack, setCurrentTrack] = useState(null);
+
+  useEffect(() => {
+    if (room && playlistTracks && room.currentTrackIndex >= 0 && room.currentTrackIndex < playlistTracks.length) {
+      setCurrentTrack(playlistTracks[room.currentTrackIndex]);
+    }
+  }, [room, playlistTracks]);
 
   // Spotify player hook (only for host)
   const {
@@ -158,6 +165,9 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
       setTimeRemaining(null);
       setRoundResult(null);
       setRoom(room);
+      if (isHost) {
+        sdkNextTrack();
+      }
     });
 
     return () => {
@@ -167,7 +177,7 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
       socket.off(SOCKET_EVENTS.GAME_OVER);
       socket.off('songChanged');
     };
-  }, [socket, isHost, setPlayers, pausePlayback, resumePlayback, setRoom]);
+  }, [socket, isHost, setPlayers, pausePlayback, resumePlayback, setRoom, sdkNextTrack]);
 
   // Countdown timer
   useEffect(() => {
@@ -191,6 +201,12 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
     socket.emit(SOCKET_EVENTS.BUZZ_IN, { roomCode });
   };
 
+  const handleNextSong = async () => {
+    if (!socket || !isHost) return;
+
+    socket.emit(SOCKET_EVENTS.NEXT_SONG, { roomCode });
+  };
+
   const handleJudgment = (isCorrect) => {
     if (!socket || !isJudge) return;
 
@@ -200,13 +216,16 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
     });
   };
 
-  const handleNextSong = async () => {
+  const handlePauseSong = async () => {
     if (!socket || !isHost) return;
+    await pausePlayback();
+    setIsPlaying(false);
+  };
 
-    socket.emit(SOCKET_EVENTS.NEXT_SONG, { roomCode });
-
-    // Play next track via Spotify SDK with readiness check
-    await sdkNextTrack();
+  const handleResumeSong = async () => {
+    if (!socket || !isHost) return;
+    await resumePlayback();
+    setIsPlaying(true);
   };
 
   return (
@@ -222,6 +241,12 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
           {isHost && (
             <div className="mb-6">
               <div className="text-sm text-secondary-text mb-2">Host Controls</div>
+              {currentTrack && (
+                <div className="mb-4">
+                  <p className="text-lg font-bold">{currentTrack.name}</p>
+                  <p className="text-sm text-secondary-text">{currentTrack.artist}</p>
+                </div>
+              )}
               {playerError && (
                 <div className="bg-red-500 bg-opacity-20 border border-red-500 rounded-lg p-4 mb-4">
                   <p className="text-red-400 font-semibold mb-2">Error</p>
@@ -271,15 +296,38 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
                   <p className="text-green-400 mb-3 font-semibold">
                     🎵 Music is playing!
                   </p>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleNextSong}
-                    className="btn-secondary"
-                    disabled={currentGuesser !== null}
-                  >
-                    Next Song
-                  </motion.button>
+                  <div className="flex justify-center space-x-4">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleNextSong}
+                      className="btn-secondary"
+                      disabled={currentGuesser !== null}
+                    >
+                      Next Song
+                    </motion.button>
+                    {isPlaying ? (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handlePauseSong}
+                        className="btn-secondary"
+                        disabled={currentGuesser !== null}
+                      >
+                        Pause Song
+                      </motion.button>
+                    ) : (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleResumeSong}
+                        className="btn-secondary"
+                        disabled={currentGuesser !== null}
+                      >
+                        Resume Song
+                      </motion.button>
+                    )}
+                  </div>
                 </>
               )}
               <p className="text-xs text-secondary-text mt-2">

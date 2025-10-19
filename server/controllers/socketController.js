@@ -213,13 +213,26 @@ function setupSocketHandlers(io) {
           });
           console.log(`🏆 Game over in room ${roomCode}! Winner: ${result.winner.displayName}`);
         } else {
-          // Round over, continue playing
           io.to(roomCode).emit('roundOver', {
             isCorrect,
             guesser: result.guesser,
             room: result.room,
           });
           console.log(`✅ Round over in room ${roomCode}`);
+
+          if (isCorrect) {
+            // Automatically go to the next song after a delay
+            setTimeout(() => {
+              const room = gameManager.getRoom(roomCode);
+              if (room && room.gameState !== 'gameOver') {
+                gameManager.nextSong(roomCode);
+                const updatedRoom = gameManager.getRoom(roomCode);
+                io.to(roomCode).emit('songChanged', {
+                  room: updatedRoom,
+                });
+              }
+            }, 3000); // 3 second delay to show the round result
+          }
         }
       } catch (error) {
         console.error('Error submitting judgment:', error);
