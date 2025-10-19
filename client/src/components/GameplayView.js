@@ -26,7 +26,6 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
 
   // Spotify player hook (only for host)
   const {
-    player,
     isReady,
     deviceId,
     error: playerError,
@@ -41,15 +40,9 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
   const isJudge = isHost;
   const canBuzzIn = !isHost && !currentGuesser;
 
-  const playlistTracksRef = useRef(playlistTracks);
-
-  useEffect(() => {
-    playlistTracksRef.current = playlistTracks;
-  }, [playlistTracks]);
-
   // Start playback when Spotify player is ready (host only)
   useEffect(() => {
-    if (!isHost || !isReady || !deviceId || !playlistTracksRef.current || playlistTracksRef.current.length === 0 || isPlaying) {
+    if (!isHost || !isReady || !deviceId || !playlistTracks || playlistTracks.length === 0 || isPlaying) {
       return;
     }
 
@@ -63,23 +56,20 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
 
       try {
         setPlaybackStatus('verifying');
-        console.log('Verifying device is ready...');
 
         // Verify the player is ready with retry logic
         const verification = await verifyPlayerReady();
 
         if (!verification.ready) {
           setPlaybackStatus('verification_failed');
-          console.error('Device verification failed:', verification.error);
           playbackInitiatedRef.current = false; // Allow retry on failure
           return;
         }
 
         setPlaybackStatus('starting');
-        console.log('Device verified! Starting playback with device:', verification.deviceId || deviceId);
 
         // Get track URIs for the playlist
-        const uris = playlistTracksRef.current.map(track => track.uri);
+        const uris = playlistTracks.map(track => track.uri);
 
         // Try to start playback using the SDK method
         const success = await sdkStartPlayback(uris, verification.deviceId);
@@ -87,22 +77,19 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
         if (success) {
           setIsPlaying(true);
           setPlaybackStatus('playing');
-          console.log('Playback started successfully!');
         } else {
           // If SDK method fails, show error
           setPlaybackStatus('error');
-          console.error('Failed to start playback');
           playbackInitiatedRef.current = false; // Allow retry on failure
         }
       } catch (error) {
-        console.error('Error starting playback:', error);
         setPlaybackStatus('error');
         playbackInitiatedRef.current = false; // Allow retry on failure
       }
     };
 
     startPlayback();
-  }, [isHost, isReady, deviceId, isPlaying, sdkStartPlayback, verifyPlayerReady]);
+  }, [isHost, isReady, deviceId, isPlaying, sdkStartPlayback, verifyPlayerReady, playlistTracks]);
 
   useEffect(() => {
     if (!socket) return;

@@ -33,7 +33,6 @@ async function exchangeCodeForTokens(code) {
       token_type: response.data.token_type,
     };
   } catch (error) {
-    console.error('Error exchanging code for tokens:', error.response?.data || error.message);
     throw new Error('Failed to exchange authorization code');
   }
 }
@@ -70,7 +69,6 @@ async function refreshAccessToken(refreshToken) {
       token_type: response.data.token_type,
     };
   } catch (error) {
-    console.error('Error refreshing token:', error.response?.data || error.message);
     throw new Error('Failed to refresh access token');
   }
 }
@@ -98,7 +96,6 @@ async function getUserPlaylists(accessToken) {
       trackCount: playlist.tracks.total,
     }));
   } catch (error) {
-    console.error('Error fetching playlists:', error.response?.data || error.message);
     throw new Error('Failed to fetch playlists');
   }
 }
@@ -135,7 +132,6 @@ async function getPlaylistTracks(accessToken, playlistId) {
         duration: item.track.duration_ms,
       }));
   } catch (error) {
-    console.error('Error fetching playlist tracks:', error.response?.data || error.message);
     throw new Error('Failed to fetch playlist tracks');
   }
 }

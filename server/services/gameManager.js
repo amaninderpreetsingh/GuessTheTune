@@ -241,10 +241,8 @@ function handleDisconnect(socketId) {
       const wasHost = room.players[playerIndex].isHost;
 
       if (wasHost) {
-        // Host disconnected - mark the time but keep the room alive for potential reconnection
-        room.disconnectedAt = Date.now();
-        console.log(`Host disconnected from room ${roomCode}. Room will be kept alive for 1 minute.`);
-        return { roomCode, wasHost: true, room, hostDisconnected: true };
+        rooms.delete(roomCode);
+        return { roomCode, wasHost: true, room: null };
       } else {
         // Regular player disconnected - remove them
         room.players.splice(playerIndex, 1);
@@ -274,12 +272,10 @@ function rejoinAsHost(roomCode, hostToken, newSocketId) {
   const room = rooms.get(roomCode);
 
   if (!room) {
-    console.log(`rejoinAsHost: Room ${roomCode} not found`);
     return null;
   }
 
   if (room.hostToken !== hostToken) {
-    console.log(`rejoinAsHost: Invalid host token for room ${roomCode}`);
     return null;
   }
 
@@ -293,7 +289,6 @@ function rejoinAsHost(roomCode, hostToken, newSocketId) {
   room.hostSocketId = newSocketId;
   room.disconnectedAt = null;
 
-  console.log(`Host successfully rejoined room ${roomCode}`);
   return room;
 }
 
@@ -302,43 +297,6 @@ function rejoinAsHost(roomCode, hostToken, newSocketId) {
  * @param {string} roomCode - Room code
  * @param {string} newHostSocketId - Socket ID of the new host
  * @returns {Object|null} Updated room or null if failed
- */
-function promoteToHost(roomCode, newHostSocketId) {
-  const room = rooms.get(roomCode);
-
-  if (!room) {
-    return null;
-  }
-
-  // Find the old host and new host
-  const oldHost = room.players.find(p => p.isHost);
-  const newHost = room.players.find(p => p.socketId === newHostSocketId);
-
-  if (!newHost) {
-    console.log(`promoteToHost: Player ${newHostSocketId} not found in room ${roomCode}`);
-    return null;
-  }
-
-  // Remove old host if they're still in the players array but disconnected
-  if (oldHost && room.disconnectedAt) {
-    const oldHostIndex = room.players.indexOf(oldHost);
-    room.players.splice(oldHostIndex, 1);
-  }
-
-  // Promote new player to host
-  newHost.isHost = true;
-  room.hostSocketId = newHostSocketId;
-  room.hostToken = crypto.randomBytes(32).toString('hex'); // Generate new token
-  room.disconnectedAt = null;
-
-  console.log(`Player ${newHost.displayName} promoted to host in room ${roomCode}`);
-  return room;
-}
-
-/**
- * Gets a room by code
- * @param {string} roomCode - Room code
- * @returns {Object|undefined} Room object or undefined
  */
 function getRoom(roomCode) {
   return rooms.get(roomCode);
@@ -352,38 +310,6 @@ function deleteRoom(roomCode) {
   rooms.delete(roomCode);
 }
 
-/**
- * Cleanup interval - checks for rooms where host has been disconnected > 1 minute
- * and promotes another player to host
- */
-function startCleanupInterval() {
-  setInterval(() => {
-    const now = Date.now();
-    const ONE_MINUTE = 60 * 1000;
-
-    for (const [roomCode, room] of rooms.entries()) {
-      if (room.disconnectedAt && (now - room.disconnectedAt) > ONE_MINUTE) {
-        console.log(`Room ${roomCode}: Host has been disconnected for > 1 minute`);
-
-        // Find the next non-host player to promote
-        const nextPlayer = room.players.find(p => !p.isHost);
-
-        if (nextPlayer) {
-          console.log(`Promoting ${nextPlayer.displayName} to host in room ${roomCode}`);
-          promoteToHost(roomCode, nextPlayer.socketId);
-        } else {
-          // No players left, delete the room
-          console.log(`Room ${roomCode}: No players left, deleting room`);
-          rooms.delete(roomCode);
-        }
-      }
-    }
-  }, 30000); // Check every 30 seconds
-}
-
-// Start the cleanup interval
-startCleanupInterval();
-
 module.exports = {
   createRoom,
   joinRoom,
@@ -394,7 +320,6 @@ module.exports = {
   nextSong,
   handleDisconnect,
   rejoinAsHost,
-  promoteToHost,
   getRoom,
   deleteRoom,
 };

@@ -6,94 +6,70 @@ const gameManager = require('../services/gameManager');
  */
 function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
-    console.log(`✅ Client connected: ${socket.id}`);
+
 
     /**
      * Create a new game room
      * Only hosts can create rooms
      */
     socket.on('createRoom', ({ displayName, isHost }) => {
-      try {
-        if (!isHost) {
-          socket.emit('error', { message: 'Only hosts can create rooms' });
-          return;
-        }
-
-        const room = gameManager.createRoom(socket.id, displayName);
-        socket.join(room.id);
-
-        socket.emit('roomCreated', {
-          roomCode: room.id,
-          room: room,
-          hostToken: room.hostToken,
-        });
-
-        console.log(`🎮 Room created: ${room.id} by ${displayName}`);
-      } catch (error) {
-        console.error('Error creating room:', error);
-        socket.emit('error', { message: 'Failed to create room' });
+      if (!isHost) {
+        return;
       }
+
+      const room = gameManager.createRoom(socket.id, displayName);
+      socket.join(room.id);
+
+      socket.emit('roomCreated', {
+        roomCode: room.id,
+        room: room,
+        hostToken: room.hostToken,
+      });
     });
 
     /**
      * Join an existing game room
      */
     socket.on('joinRoom', ({ roomCode, displayName }) => {
-      try {
-        const room = gameManager.joinRoom(roomCode, socket.id, displayName);
+      const room = gameManager.joinRoom(roomCode, socket.id, displayName);
 
-        if (!room) {
-          socket.emit('roomNotFound', { message: 'Room not found' });
-          return;
-        }
-
-        socket.join(roomCode);
-
-        // Notify the player who just joined
-        socket.emit('playerJoined', { room });
-
-        // Notify all other players in the room
-        socket.to(roomCode).emit('playerJoined', { room });
-
-        console.log(`👤 ${displayName} joined room: ${roomCode}`);
-      } catch (error) {
-        console.error('Error joining room:', error);
-        socket.emit('error', { message: error.message || 'Failed to join room' });
+      if (!room) {
+        return;
       }
+
+      socket.join(roomCode);
+
+      // Notify the player who just joined
+      socket.emit('playerJoined', { room });
+
+      // Notify all other players in the room
+      socket.to(roomCode).emit('playerJoined', { room });
     });
 
     /**
      * Rejoin as host with authentication token
      */
     socket.on('rejoinAsHost', ({ roomCode, hostToken }) => {
-      try {
-        const room = gameManager.rejoinAsHost(roomCode, hostToken, socket.id);
+      const room = gameManager.rejoinAsHost(roomCode, hostToken, socket.id);
 
-        if (!room) {
-          socket.emit('rejoinFailed', { message: 'Failed to rejoin as host' });
-          return;
-        }
-
-        socket.join(roomCode);
-
-        // Notify the host they've successfully rejoined
-        socket.emit('hostRejoined', {
-          roomCode: room.id,
-          room: room,
-          hostToken: room.hostToken,
-        });
-
-        // Notify all other players that host is back
-        socket.to(roomCode).emit('hostReconnected', {
-          message: 'Host has reconnected!',
-          room: room,
-        });
-
-        console.log(`🔄 Host rejoined room: ${roomCode}`);
-      } catch (error) {
-        console.error('Error rejoining as host:', error);
-        socket.emit('error', { message: 'Failed to rejoin as host' });
+      if (!room) {
+        return;
       }
+
+      socket.join(roomCode);
+
+      // Notify the host they've successfully rejoined
+      socket.emit('hostRejoined', {
+        roomCode: room.id,
+        room: room,
+        hostToken: room.hostToken,
+      });
+
+      // Notify all other players that host is back
+      socket.to(roomCode).emit('hostReconnected', {
+        message: 'Host has reconnected!',
+        room: room,
+      });
     });
 
     /**
@@ -111,18 +87,13 @@ function setupSocketHandlers(io) {
             message: 'Host disconnected. Waiting for reconnection...',
             waitingForReconnect: true,
           });
-          console.log(`⏳ Host disconnected from room ${roomCode}, waiting for reconnect`);
         } else if (wasHost && !room) {
           // Host left and room was deleted (no other players)
-          console.log(`🗑️ Room ${roomCode} deleted - host left and no players remaining`);
         } else if (room) {
           // Regular player disconnected
           io.to(roomCode).emit('playerLeft', { room });
-          console.log(`👤 Player left room ${roomCode}`);
         }
       }
-
-      console.log(`❌ Client disconnected: ${socket.id}`);
     });
 
     /**
@@ -130,113 +101,88 @@ function setupSocketHandlers(io) {
      * Only the host can start the game
      */
     socket.on('startGame', ({ roomCode, playlist }) => {
-      try {
-        const room = gameManager.getRoom(roomCode);
+      const room = gameManager.getRoom(roomCode);
 
-        if (!room) {
-          socket.emit('error', { message: 'Room not found' });
-          return;
-        }
-
-        if (room.hostSocketId !== socket.id) {
-          socket.emit('error', { message: 'Only the host can start the game' });
-          return;
-        }
-
-        gameManager.startGame(roomCode, playlist);
-
-        // Notify all players in the room
-        io.to(roomCode).emit('gameStarted', {
-          room: gameManager.getRoom(roomCode),
-        });
-
-        console.log(`🎮 Game started in room: ${roomCode}`);
-      } catch (error) {
-        console.error('Error starting game:', error);
-        socket.emit('error', { message: 'Failed to start game' });
+      if (!room) {
+        return;
       }
+
+      if (room.hostSocketId !== socket.id) {
+        return;
+      }
+
+      gameManager.startGame(roomCode, playlist);
+
+      // Notify all players in the room
+      io.to(roomCode).emit('gameStarted', {
+        room: gameManager.getRoom(roomCode),
+      });
     });
 
     /**
      * Handle buzz-in from a player
      */
     socket.on('buzzIn', ({ roomCode }) => {
-      try {
-        const result = gameManager.handleBuzzIn(roomCode, socket.id);
+      const result = gameManager.handleBuzzIn(roomCode, socket.id);
 
-        if (!result.success) {
-          socket.emit('error', { message: result.message });
-          return;
-        }
-
-        // Notify all players that someone buzzed in
-        io.to(roomCode).emit('playerIsGuessing', {
-          player: result.player,
-          timeLimit: 30,
-        });
-
-        // Start a 30-second timer
-        setTimeout(() => {
-          const room = gameManager.getRoom(roomCode);
-          if (room && room.currentGuesser === socket.id) {
-            gameManager.clearGuesser(roomCode);
-            io.to(roomCode).emit('guessTimeExpired', {
-              message: 'Time expired! Continue playing.',
-            });
-          }
-        }, 30000);
-
-        console.log(`🔔 Buzz in from ${result.player.displayName} in room ${roomCode}`);
-      } catch (error) {
-        console.error('Error handling buzz in:', error);
-        socket.emit('error', { message: 'Failed to process buzz in' });
+      if (!result.success) {
+        return;
       }
+
+      // Notify all players that someone buzzed in
+      io.to(roomCode).emit('playerIsGuessing', {
+        player: result.player,
+        timeLimit: 30,
+      });
+
+      // Start a 30-second timer
+      setTimeout(() => {
+        const room = gameManager.getRoom(roomCode);
+        if (room && room.currentGuesser === socket.id) {
+          gameManager.clearGuesser(roomCode);
+          io.to(roomCode).emit('guessTimeExpired', {
+            message: 'Time expired! Continue playing.',
+          });
+        }
+      }, 30000);
     });
 
     /**
      * Handle judge's decision
      */
     socket.on('submitJudgment', ({ roomCode, isCorrect }) => {
-      try {
-        const result = gameManager.submitJudgment(roomCode, socket.id, isCorrect);
+      const result = gameManager.submitJudgment(roomCode, socket.id, isCorrect);
 
-        if (!result.success) {
-          socket.emit('error', { message: result.message });
-          return;
+      if (!result.success) {
+        return;
+      }
+
+      if (result.gameOver) {
+        // Game is over, we have a winner
+        io.to(roomCode).emit('gameOver', {
+          winner: result.winner,
+          finalScores: result.room.players,
+        });
+      } else {
+        io.to(roomCode).emit('roundOver', {
+          isCorrect,
+          guesser: result.guesser,
+          room: result.room,
+        });
+
+        if (isCorrect) {
+          // Automatically go to the next song after a delay
+          setTimeout(() => {
+            const room = gameManager.getRoom(roomCode);
+            if (room && room.gameState !== 'gameOver') {
+              gameManager.nextSong(roomCode);
+              const updatedRoom = gameManager.getRoom(roomCode);
+              io.to(roomCode).emit('songChanged', {
+                room: updatedRoom,
+              });
+            }
+          }, 3000); // 3 second delay to show the round result
         }
-
-        if (result.gameOver) {
-          // Game is over, we have a winner
-          io.to(roomCode).emit('gameOver', {
-            winner: result.winner,
-            finalScores: result.room.players,
-          });
-          console.log(`🏆 Game over in room ${roomCode}! Winner: ${result.winner.displayName}`);
-        } else {
-          io.to(roomCode).emit('roundOver', {
-            isCorrect,
-            guesser: result.guesser,
-            room: result.room,
-          });
-          console.log(`✅ Round over in room ${roomCode}`);
-
-          if (isCorrect) {
-            // Automatically go to the next song after a delay
-            setTimeout(() => {
-              const room = gameManager.getRoom(roomCode);
-              if (room && room.gameState !== 'gameOver') {
-                gameManager.nextSong(roomCode);
-                const updatedRoom = gameManager.getRoom(roomCode);
-                io.to(roomCode).emit('songChanged', {
-                  room: updatedRoom,
-                });
-              }
-            }, 3000); // 3 second delay to show the round result
-          }
-        }
-      } catch (error) {
-        console.error('Error submitting judgment:', error);
-        socket.emit('error', { message: 'Failed to submit judgment' });
       }
     });
 
@@ -244,28 +190,21 @@ function setupSocketHandlers(io) {
      * Move to next song
      */
     socket.on('nextSong', ({ roomCode }) => {
-      try {
-        const room = gameManager.getRoom(roomCode);
+      const room = gameManager.getRoom(roomCode);
 
-        if (!room) {
-          socket.emit('error', { message: 'Room not found' });
-          return;
-        }
-
-        if (room.hostSocketId !== socket.id) {
-          socket.emit('error', { message: 'Only the host can change songs' });
-          return;
-        }
-
-        gameManager.nextSong(roomCode);
-
-        io.to(roomCode).emit('songChanged', {
-          room: gameManager.getRoom(roomCode),
-        });
-      } catch (error) {
-        console.error('Error changing song:', error);
-        socket.emit('error', { message: 'Failed to change song' });
+      if (!room) {
+        return;
       }
+
+      if (room.hostSocketId !== socket.id) {
+        return;
+      }
+
+      gameManager.nextSong(roomCode);
+
+      io.to(roomCode).emit('songChanged', {
+        room: gameManager.getRoom(roomCode),
+      });
     });
   });
 }
