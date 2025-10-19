@@ -11,6 +11,8 @@ router.get('/login', (req, res) => {
     'streaming',
     'user-read-email',
     'user-read-private',
+    'user-read-playback-state',
+    'user-modify-playback-state',
     'playlist-read-private',
     'playlist-read-collaborative',
   ];
@@ -45,14 +47,21 @@ router.get('/callback', async (req, res) => {
   try {
     const tokenData = await spotifyService.exchangeCodeForTokens(code);
 
+    // Add timestamp for expiration tracking
+    const tokenDataWithTimestamp = {
+      ...tokenData,
+      issued_at: Date.now(),
+    };
+
     // Store tokens in httpOnly cookie for security
-    res.cookie('spotify_auth', JSON.stringify(tokenData), {
+    res.cookie('spotify_auth', JSON.stringify(tokenDataWithTimestamp), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 3600000, // 1 hour
       sameSite: 'lax',
     });
 
+    console.log('Tokens stored with expiration tracking');
     // Redirect back to client with success
     res.redirect(`${process.env.CLIENT_URL}/lobby?host=true`);
   } catch (error) {
@@ -80,14 +89,21 @@ router.post('/refresh', async (req, res) => {
 
     const tokenData = await spotifyService.refreshAccessToken(refresh_token);
 
+    // Add timestamp for expiration tracking
+    const tokenDataWithTimestamp = {
+      ...tokenData,
+      issued_at: Date.now(),
+    };
+
     // Update cookie with new token data
-    res.cookie('spotify_auth', JSON.stringify(tokenData), {
+    res.cookie('spotify_auth', JSON.stringify(tokenDataWithTimestamp), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 3600000,
       sameSite: 'lax',
     });
 
+    console.log('Token refreshed with new expiration timestamp');
     res.json({ success: true });
   } catch (error) {
     console.error('Token refresh error:', error);

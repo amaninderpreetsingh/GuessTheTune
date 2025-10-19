@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const authController = require('./controllers/authController');
 const playlistController = require('./controllers/playlistController');
 const tokenController = require('./controllers/tokenController');
+const playbackController = require('./controllers/playbackController');
 const setupSocketHandlers = require('./controllers/socketController');
 
 const app = express();
@@ -62,6 +63,7 @@ app.use(cookieParser());
 app.use('/auth', authController);
 app.use('/api', playlistController);
 app.use('/api', tokenController);
+app.use('/api', playbackController);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

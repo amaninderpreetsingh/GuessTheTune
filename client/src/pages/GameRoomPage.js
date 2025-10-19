@@ -17,6 +17,7 @@ const GameRoomPage = () => {
     players,
     setPlayers,
     setGameState,
+    setRoom,
   } = useGame();
 
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
@@ -46,15 +47,18 @@ const GameRoomPage = () => {
       setGameState('playing');
       setCurrentView('playing');
       setPlayers(room.players);
+      setRoom(room);
     });
 
     // Listen for player updates
     socket.on('playerJoined', ({ room }) => {
       setPlayers(room.players);
+      setRoom(room);
     });
 
     socket.on('playerLeft', ({ room }) => {
       setPlayers(room.players);
+      setRoom(room);
     });
 
     // Listen for host disconnect
@@ -69,7 +73,7 @@ const GameRoomPage = () => {
       socket.off('playerLeft');
       socket.off('hostDisconnected');
     };
-  }, [socket, navigate, setGameState, setPlayers]);
+  }, [socket, navigate, setGameState, setPlayers, setRoom]);
 
   const handlePlaylistSelected = (playlist, tracks) => {
     setSelectedPlaylist(playlist);

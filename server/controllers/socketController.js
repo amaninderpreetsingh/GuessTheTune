@@ -25,6 +25,7 @@ function setupSocketHandlers(io) {
         socket.emit('roomCreated', {
           roomCode: room.id,
           room: room,
+          hostToken: room.hostToken,
         });
 
         console.log(`🎮 Room created: ${room.id} by ${displayName}`);
@@ -62,24 +63,62 @@ function setupSocketHandlers(io) {
     });
 
     /**
+     * Rejoin as host with authentication token
+     */
+    socket.on('rejoinAsHost', ({ roomCode, hostToken }) => {
+      try {
+        const room = gameManager.rejoinAsHost(roomCode, hostToken, socket.id);
+
+        if (!room) {
+          socket.emit('rejoinFailed', { message: 'Failed to rejoin as host' });
+          return;
+        }
+
+        socket.join(roomCode);
+
+        // Notify the host they've successfully rejoined
+        socket.emit('hostRejoined', {
+          roomCode: room.id,
+          room: room,
+          hostToken: room.hostToken,
+        });
+
+        // Notify all other players that host is back
+        socket.to(roomCode).emit('hostReconnected', {
+          message: 'Host has reconnected!',
+          room: room,
+        });
+
+        console.log(`🔄 Host rejoined room: ${roomCode}`);
+      } catch (error) {
+        console.error('Error rejoining as host:', error);
+        socket.emit('error', { message: 'Failed to rejoin as host' });
+      }
+    });
+
+    /**
      * Handle player disconnect
      */
     socket.on('disconnect', () => {
       const result = gameManager.handleDisconnect(socket.id);
 
       if (result) {
-        const { roomCode, wasHost, room } = result;
+        const { roomCode, wasHost, room, hostDisconnected } = result;
 
-        if (wasHost && room) {
-          // Host disconnected - notify all players
+        if (hostDisconnected && room) {
+          // Host disconnected but room is kept alive for reconnection
           io.to(roomCode).emit('hostDisconnected', {
-            message: 'The host has left. Game ended.',
+            message: 'Host disconnected. Waiting for reconnection...',
+            waitingForReconnect: true,
           });
-          // Clean up the room
-          gameManager.deleteRoom(roomCode);
+          console.log(`⏳ Host disconnected from room ${roomCode}, waiting for reconnect`);
+        } else if (wasHost && !room) {
+          // Host left and room was deleted (no other players)
+          console.log(`🗑️ Room ${roomCode} deleted - host left and no players remaining`);
         } else if (room) {
           // Regular player disconnected
           io.to(roomCode).emit('playerLeft', { room });
+          console.log(`👤 Player left room ${roomCode}`);
         }
       }
 

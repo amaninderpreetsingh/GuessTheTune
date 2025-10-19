@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '../context/GameContext';
 import useSpotifyPlayer from '../hooks/useSpotifyPlayer';
@@ -8,31 +8,106 @@ import WinnerModal from './WinnerModal';
 import { SOCKET_EVENTS } from '../utils/constants';
 
 const GameplayView = ({ roomCode, playlistTracks }) => {
-  const { socket, isHost, players, setPlayers } = useGame();
+  const { socket, isHost, players, setPlayers, room, setRoom } = useGame();
   const [currentGuesser, setCurrentGuesser] = useState(null);
-  const [currentJudge, setCurrentJudge] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [winner, setWinner] = useState(null);
   const [roundResult, setRoundResult] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackStatus, setPlaybackStatus] = useState('initializing'); // initializing, waiting, starting, playing, error
+  const playbackInitiatedRef = useRef(false);
 
   // Spotify player hook (only for host)
-  const { player, isReady, error: playerError } = useSpotifyPlayer(isHost);
+  const {
+    player,
+    isReady,
+    deviceId,
+    error: playerError,
+    startPlayback: sdkStartPlayback,
+    verifyPlayerReady,
+    nextTrack: sdkNextTrack,
+    pausePlayback,
+    resumePlayback,
+  } = useSpotifyPlayer(isHost);
 
-  // Determine if current user is the judge
-  const isJudge = currentJudge && currentJudge.socketId === socket?.id;
-  const canBuzzIn = !isHost && !isJudge && !currentGuesser;
+  // The host is always the judge
+  const isJudge = isHost;
+  const canBuzzIn = !isHost && !currentGuesser;
+
+  const playlistTracksRef = useRef(playlistTracks);
+
+  useEffect(() => {
+    playlistTracksRef.current = playlistTracks;
+  }, [playlistTracks]);
+
+  // Start playback when Spotify player is ready (host only)
+  useEffect(() => {
+    if (!isHost || !isReady || !deviceId || !playlistTracksRef.current || playlistTracksRef.current.length === 0 || isPlaying) {
+      return;
+    }
+
+    // Prevent multiple playback initiations
+    if (playbackInitiatedRef.current) {
+      return;
+    }
+
+    const startPlayback = async () => {
+      playbackInitiatedRef.current = true;
+
+      try {
+        setPlaybackStatus('verifying');
+        console.log('Verifying device is ready...');
+
+        // Verify the player is ready with retry logic
+        const verification = await verifyPlayerReady();
+
+        if (!verification.ready) {
+          setPlaybackStatus('verification_failed');
+          console.error('Device verification failed:', verification.error);
+          playbackInitiatedRef.current = false; // Allow retry on failure
+          return;
+        }
+
+        setPlaybackStatus('starting');
+        console.log('Device verified! Starting playback with device:', verification.deviceId || deviceId);
+
+        // Get track URIs for the playlist
+        const uris = playlistTracksRef.current.map(track => track.uri);
+
+        // Try to start playback using the SDK method
+        const success = await sdkStartPlayback(uris, verification.deviceId);
+
+        if (success) {
+          setIsPlaying(true);
+          setPlaybackStatus('playing');
+          console.log('Playback started successfully!');
+        } else {
+          // If SDK method fails, show error
+          setPlaybackStatus('error');
+          console.error('Failed to start playback');
+          playbackInitiatedRef.current = false; // Allow retry on failure
+        }
+      } catch (error) {
+        console.error('Error starting playback:', error);
+        setPlaybackStatus('error');
+        playbackInitiatedRef.current = false; // Allow retry on failure
+      }
+    };
+
+    startPlayback();
+  }, [isHost, isReady, deviceId, isPlaying, sdkStartPlayback, verifyPlayerReady]);
 
   useEffect(() => {
     if (!socket) return;
 
     // Listen for player is guessing event
-    socket.on(SOCKET_EVENTS.PLAYER_IS_GUESSING, ({ player, timeLimit }) => {
-      setCurrentGuesser(player);
+    socket.on(SOCKET_EVENTS.PLAYER_IS_GUESSING, ({ player: guessingPlayer, timeLimit }) => {
+      setCurrentGuesser(guessingPlayer);
       setTimeRemaining(timeLimit);
 
       // Pause music for host
-      if (isHost && player) {
-        player.pause();
+      if (isHost) {
+        pausePlayback();
       }
     });
 
@@ -40,6 +115,7 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
     socket.on(SOCKET_EVENTS.ROUND_OVER, ({ isCorrect, guesser, room }) => {
       setRoundResult({ isCorrect, guesser });
       setPlayers(room.players);
+      setRoom(room);
       setCurrentGuesser(null);
       setTimeRemaining(null);
 
@@ -48,8 +124,8 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
         setRoundResult(null);
 
         // Resume music if incorrect
-        if (!isCorrect && isHost && player) {
-          player.togglePlay();
+        if (!isCorrect && isHost) {
+          resumePlayback();
         }
       }, 3000);
     });
@@ -60,8 +136,8 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
       setTimeRemaining(null);
 
       // Resume music for host
-      if (isHost && player) {
-        player.togglePlay();
+      if (isHost) {
+        resumePlayback();
       }
     });
 
@@ -71,16 +147,17 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
       setPlayers(finalScores);
 
       // Pause music for host
-      if (isHost && player) {
-        player.pause();
+      if (isHost) {
+        pausePlayback();
       }
     });
 
     // Listen for song changed
-    socket.on('songChanged', () => {
+    socket.on('songChanged', ({ room }) => {
       setCurrentGuesser(null);
       setTimeRemaining(null);
       setRoundResult(null);
+      setRoom(room);
     });
 
     return () => {
@@ -90,7 +167,7 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
       socket.off(SOCKET_EVENTS.GAME_OVER);
       socket.off('songChanged');
     };
-  }, [socket, isHost, player, setPlayers]);
+  }, [socket, isHost, setPlayers, pausePlayback, resumePlayback, setRoom]);
 
   // Countdown timer
   useEffect(() => {
@@ -108,19 +185,6 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
     return () => clearTimeout(timer);
   }, [timeRemaining]);
 
-  // Update current judge based on players
-  useEffect(() => {
-    if (players.length > 0) {
-      // Find the judge (rotation logic handled by server)
-      // For now, we'll just use player tracking from server
-      const nonHostPlayers = players.filter((p) => !p.isHost);
-      if (nonHostPlayers.length > 0) {
-        // The server manages judge rotation
-        setCurrentJudge(nonHostPlayers[0]); // Placeholder
-      }
-    }
-  }, [players]);
-
   const handleBuzzIn = () => {
     if (!socket || !canBuzzIn) return;
 
@@ -136,15 +200,13 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
     });
   };
 
-  const handleNextSong = () => {
+  const handleNextSong = async () => {
     if (!socket || !isHost) return;
 
     socket.emit(SOCKET_EVENTS.NEXT_SONG, { roomCode });
 
-    // Play next track via Spotify SDK
-    if (player) {
-      player.nextTrack();
-    }
+    // Play next track via Spotify SDK with readiness check
+    await sdkNextTrack();
   };
 
   return (
@@ -174,16 +236,51 @@ const GameplayView = ({ roomCode, playlistTracks }) => {
                   Initializing Spotify Player...
                 </p>
               )}
-              {isReady && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleNextSong}
-                  className="btn-secondary"
-                  disabled={currentGuesser !== null}
-                >
-                  Next Song
-                </motion.button>
+              {isReady && playbackStatus === 'verifying' && (
+                <div className="mb-4">
+                  <p className="text-yellow-400 mb-2">
+                    Verifying device is ready...
+                  </p>
+                  <p className="text-xs text-secondary-text">
+                    This may take a few seconds
+                  </p>
+                </div>
+              )}
+              {isReady && playbackStatus === 'starting' && (
+                <p className="text-yellow-400 mb-4">
+                  Starting playback...
+                </p>
+              )}
+              {isReady && playbackStatus === 'verification_failed' && (
+                <div className="bg-red-500 bg-opacity-20 border border-red-500 rounded-lg p-4 mb-4">
+                  <p className="text-red-400 font-semibold mb-2">Device Verification Failed</p>
+                  <p className="text-sm">Spotify device could not be verified after 5 attempts.</p>
+                  <p className="text-xs text-secondary-text mt-2">
+                    Try refreshing the page or check your Spotify connection
+                  </p>
+                </div>
+              )}
+              {isReady && playbackStatus === 'error' && (
+                <div className="bg-red-500 bg-opacity-20 border border-red-500 rounded-lg p-4 mb-4">
+                  <p className="text-red-400 font-semibold mb-2">Playback Error</p>
+                  <p className="text-sm">Failed to start music. Try refreshing the page.</p>
+                </div>
+              )}
+              {isReady && playbackStatus === 'playing' && (
+                <>
+                  <p className="text-green-400 mb-3 font-semibold">
+                    🎵 Music is playing!
+                  </p>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleNextSong}
+                    className="btn-secondary"
+                    disabled={currentGuesser !== null}
+                  >
+                    Next Song
+                  </motion.button>
+                </>
               )}
               <p className="text-xs text-secondary-text mt-2">
                 Only you can hear the music
