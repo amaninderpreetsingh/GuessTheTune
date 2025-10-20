@@ -101,16 +101,13 @@ function setupSocketHandlers(io) {
      * Only the host can start the game
      */
     socket.on('startGame', ({ roomCode, playlist, shuffle }) => {
-      console.log('Received startGame event:', { roomCode, playlistLength: playlist.length, shuffle });
       const room = gameManager.getRoom(roomCode);
 
       if (!room) {
-        console.log('startGame: Room not found for roomCode:', roomCode);
         return;
       }
 
       if (room.hostSocketId !== socket.id) {
-        console.log('startGame: Socket ID does not match hostSocketId for room:', roomCode);
         return;
       }
 
@@ -204,6 +201,28 @@ function setupSocketHandlers(io) {
       }
 
       gameManager.nextSong(roomCode);
+
+      io.to(roomCode).emit('songChanged', {
+        room: gameManager.getRoom(roomCode),
+      });
+    });
+
+    /**
+     * Force a specific song to play next
+     * Only the host can do this
+     */
+    socket.on('forceNextSong', ({ roomCode, track }) => {
+      const room = gameManager.getRoom(roomCode);
+
+      if (!room) {
+        return;
+      }
+
+      if (room.hostSocketId !== socket.id) {
+        return;
+      }
+
+      gameManager.forceNextSong(roomCode, track);
 
       io.to(roomCode).emit('songChanged', {
         room: gameManager.getRoom(roomCode),

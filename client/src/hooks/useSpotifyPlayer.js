@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
 /**
@@ -11,6 +11,7 @@ const useSpotifyPlayer = (isHost) => {
   const [deviceId, setDeviceId] = useState(null);
   const [error, setError] = useState(null);
   const [actualDeviceId, setActualDeviceId] = useState(null); // Actual ID from Spotify API
+  const actualDeviceIdRef = useRef(null); // Ref for immediate access without state update delay
 
   const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://127.0.0.1:8080';
   const DEVICE_NAME = 'GuessTheTune Player';
@@ -52,8 +53,6 @@ const useSpotifyPlayer = (isHost) => {
           return;
         }
 
-        console.log('Initializing Spotify Player with token...');
-
         spotifyPlayer = new window.Spotify.Player({
         name: 'GuessTheTune Player',
         getOAuthToken: (cb) => {
@@ -84,22 +83,18 @@ const useSpotifyPlayer = (isHost) => {
 
       // Ready
       spotifyPlayer.addListener('ready', ({ device_id }) => {
-        console.log('Spotify Player Ready with Device ID:', device_id);
         setDeviceId(device_id);
         setIsReady(true);
       });
 
       // Not Ready
       spotifyPlayer.addListener('not_ready', ({ device_id }) => {
-        console.log('Device ID has gone offline:', device_id);
         setIsReady(false);
       });
 
       // Connect to the player
       spotifyPlayer.connect().then((success) => {
-        if (success) {
-          console.log('Spotify Player connected successfully');
-        } else {
+        if (!success) {
           console.error('Spotify Player connection failed');
           setError('Failed to connect to Spotify');
         }
@@ -115,14 +110,12 @@ const useSpotifyPlayer = (isHost) => {
     // Define the callback globally (Spotify SDK looks for this)
     if (!window.onSpotifyWebPlaybackSDKReady) {
       window.onSpotifyWebPlaybackSDKReady = () => {
-        console.log('Spotify SDK Ready');
         initializePlayer();
       };
     }
 
     // Check if SDK is already loaded
     if (window.Spotify && window.Spotify.Player) {
-      console.log('Spotify SDK already loaded, initializing...');
       initializePlayer();
     }
 
@@ -163,30 +156,17 @@ const useSpotifyPlayer = (isHost) => {
 
         if (response.ok) {
           const data = await response.json();
-          console.log(`Looking for device named: "${DEVICE_NAME}"`);
-          console.log(`SDK reported device ID: ${deviceId}`);
-          console.log(`Found ${data.devices.length} devices:`, data.devices.map(d => ({
-            id: d.id,
-            name: d.name,
-            type: d.type,
-            is_active: d.is_active
-          })));
 
           // Search by device name instead of ID (SDK sometimes reports wrong ID)
           const ourDevice = data.devices.find(d => d.name === DEVICE_NAME);
 
           if (ourDevice) {
-            console.log(`✅ Device found! Name: "${ourDevice.name}", Actual ID: ${ourDevice.id}`);
-
-            // Store the actual device ID from the API
-            if (ourDevice.id !== deviceId) {
-              console.warn(`⚠️ Device ID mismatch! SDK said: ${deviceId}, API says: ${ourDevice.id}`);
-              setActualDeviceId(ourDevice.id);
-            }
+            // Always store the actual device ID from the API (it's more reliable than SDK's)
+            // Use both state and ref - ref for immediate access, state for triggering re-renders
+            setActualDeviceId(ourDevice.id);
+            actualDeviceIdRef.current = ourDevice.id;
 
             return { ready: true, error: null, deviceId: ourDevice.id };
-          } else {
-            console.log(`⏳ Device "${DEVICE_NAME}" not in the list yet...`);
           }
         } else {
           console.error(`API returned ${response.status}: ${response.statusText}`);
@@ -194,7 +174,6 @@ const useSpotifyPlayer = (isHost) => {
 
         // Device not ready yet - wait before retrying
         if (attempt < MAX_RETRIES - 1) {
-          console.log(`Device not ready, retrying in ${RETRY_DELAYS[attempt]}ms...`);
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[attempt]));
         }
       } catch (err) {
@@ -217,7 +196,8 @@ const useSpotifyPlayer = (isHost) => {
     }
 
     // Use the verified device ID from the API if available, otherwise fallback to other IDs
-    const targetDeviceId = verifiedDeviceId || actualDeviceId || deviceId;
+    // Use ref for actualDeviceId as it updates immediately without waiting for state
+    const targetDeviceId = verifiedDeviceId || actualDeviceIdRef.current || actualDeviceId || deviceId;
 
     if (!targetDeviceId) {
       console.error('No device ID available');
@@ -230,8 +210,6 @@ const useSpotifyPlayer = (isHost) => {
         console.error('No access token');
         return false;
       }
-
-      console.log(`Starting playback on device: ${targetDeviceId}`);
 
       // Use Spotify Web API to start playback on this device
       const response = await fetch(
@@ -254,7 +232,6 @@ const useSpotifyPlayer = (isHost) => {
         return false;
       }
 
-      console.log('✅ Playback started successfully!');
       return true;
     } catch (err) {
       console.error('Error starting playback:', err);
@@ -271,7 +248,6 @@ const useSpotifyPlayer = (isHost) => {
 
     try {
       await player.nextTrack();
-      console.log('Skipped to next track');
       return true;
     } catch (err) {
       console.error('Error skipping track:', err);
@@ -288,7 +264,6 @@ const useSpotifyPlayer = (isHost) => {
 
     try {
       await player.pause();
-      console.log('Playback paused');
       return true;
     } catch (err) {
       console.error('Error pausing:', err);
@@ -305,7 +280,6 @@ const useSpotifyPlayer = (isHost) => {
 
     try {
       await player.resume();
-      console.log('Playback resumed');
       return true;
     } catch (err) {
       console.error('Error resuming:', err);
@@ -316,7 +290,7 @@ const useSpotifyPlayer = (isHost) => {
   return {
     player,
     isReady,
-    deviceId,
+    deviceId: actualDeviceId || deviceId, // Expose the actualDeviceId if available, otherwise SDK's
     error,
     startPlayback,
     verifyPlayerReady,

@@ -5,9 +5,10 @@ import useSpotifyPlayer from '../hooks/useSpotifyPlayer';
 import BuzzButton from './BuzzButton';
 import JudgeControls from './JudgeControls';
 import WinnerModal from './WinnerModal';
+import TrackSearch from './TrackSearch'; // New import
 import { SOCKET_EVENTS } from '../utils/constants';
 
-const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
+const GameplayView = ({ roomCode, onChangePlaylist }) => {
   const { socket, isHost, players, setPlayers, room, setRoom } = useGame();
   const [currentGuesser, setCurrentGuesser] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
@@ -17,21 +18,22 @@ const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
   const [playbackStatus, setPlaybackStatus] = useState('initializing'); // initializing, waiting, starting, playing, error
   const playbackInitiatedRef = useRef(false);
   const [currentTrack, setCurrentTrack] = useState(null);
+  const [showTrackSearch, setShowTrackSearch] = useState(false); // New state
 
   useEffect(() => {
-    if (room && playlistTracks && room.currentTrackIndex >= 0 && room.currentTrackIndex < playlistTracks.length) {
-      setCurrentTrack(playlistTracks[room.currentTrackIndex]);
+    // Use room.playlist as the source of truth (it's shuffled by the server)
+    if (room && room.playlist && room.currentTrackIndex >= 0 && room.currentTrackIndex < room.playlist.length) {
+      setCurrentTrack(room.playlist[room.currentTrackIndex]);
     }
-  }, [room, playlistTracks]);
+  }, [room]);
 
   // Spotify player hook (only for host)
   const {
     isReady,
     deviceId,
     error: playerError,
-    startPlayback: sdkStartPlayback,
+    startPlayback,
     verifyPlayerReady,
-    nextTrack: sdkNextTrack,
     pausePlayback,
     resumePlayback,
   } = useSpotifyPlayer(isHost);
@@ -42,7 +44,10 @@ const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
 
   // Start playback when Spotify player is ready (host only)
   useEffect(() => {
-    if (!isHost || !isReady || !deviceId || !playlistTracks || playlistTracks.length === 0 || isPlaying) {
+    // Use room.playlist as the source of truth
+    const playlist = room?.playlist;
+
+    if (!isHost || !isReady || !deviceId || !playlist || playlist.length === 0 || isPlaying) {
       return;
     }
 
@@ -51,7 +56,7 @@ const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
       return;
     }
 
-    const startPlayback = async () => {
+    const initializePlayback = async () => {
       playbackInitiatedRef.current = true;
 
       try {
@@ -69,10 +74,10 @@ const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
         setPlaybackStatus('starting');
 
         // Get track URIs for the playlist
-        const uris = playlistTracks.map(track => track.uri);
+        const uris = playlist.map(track => track.uri);
 
-        // Try to start playback using the SDK method
-        const success = await sdkStartPlayback(uris, verification.deviceId);
+        // Try to start playback
+        const success = await startPlayback(uris, verification.deviceId);
 
         if (success) {
           setIsPlaying(true);
@@ -88,8 +93,8 @@ const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
       }
     };
 
-    startPlayback();
-  }, [isHost, isReady, deviceId, isPlaying, sdkStartPlayback, verifyPlayerReady, playlistTracks]);
+    initializePlayback();
+  }, [isHost, isReady, deviceId, isPlaying, startPlayback, verifyPlayerReady, room]);
 
   useEffect(() => {
     if (!socket) return;
@@ -153,7 +158,10 @@ const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
       setRoundResult(null);
       setRoom(room);
       if (isHost) {
-        sdkNextTrack();
+        const newTrack = room.playlist[room.currentTrackIndex];
+        if (newTrack) {
+          startPlayback([newTrack.uri]);
+        }
       }
     });
 
@@ -164,7 +172,7 @@ const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
       socket.off(SOCKET_EVENTS.GAME_OVER);
       socket.off('songChanged');
     };
-  }, [socket, isHost, setPlayers, pausePlayback, resumePlayback, setRoom, sdkNextTrack]);
+  }, [socket, isHost, setPlayers, pausePlayback, resumePlayback, setRoom, startPlayback]);
 
   // Countdown timer
   useEffect(() => {
@@ -283,7 +291,7 @@ const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
                   <p className="text-green-400 mb-3 font-semibold">
                     🎵 Music is playing!
                   </p>
-                  <div className="flex justify-center space-x-4 mb-4"> {/* Added mb-4 for spacing */}
+                  <div className="flex justify-center space-x-4 mb-4">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -315,15 +323,26 @@ const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
                       </motion.button>
                     )}
                   </div>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={onChangePlaylist}
-                    className="btn-tertiary" // Assuming btn-tertiary exists or needs to be defined
-                    disabled={currentGuesser !== null}
-                  >
-                    Change Playlist
-                  </motion.button>
+                  <div className="flex justify-center space-x-4">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowTrackSearch(true)}
+                      className="btn-secondary"
+                      disabled={currentGuesser !== null}
+                    >
+                      Choose Next Song
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={onChangePlaylist}
+                      className="btn-tertiary"
+                      disabled={currentGuesser !== null}
+                    >
+                      Change Playlist
+                    </motion.button>
+                  </div>
                 </>
               )}
               <p className="text-xs text-secondary-text mt-2">
@@ -413,6 +432,26 @@ const GameplayView = ({ roomCode, playlistTracks, onChangePlaylist }) => {
           players={players}
           onClose={() => setWinner(null)}
         />
+      )}
+
+      {/* Track Search Modal */}
+      {isHost && showTrackSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="relative bg-primary-bg rounded-lg p-6 w-full max-w-md"
+          >
+            <button
+              onClick={() => setShowTrackSearch(false)}
+              className="absolute top-3 right-3 text-secondary-text hover:text-white text-2xl"
+            >
+              &times;
+            </button>
+            <TrackSearch onTrackSelected={() => setShowTrackSearch(false)} />
+          </motion.div>
+        </div>
       )}
     </div>
   );

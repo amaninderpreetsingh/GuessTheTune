@@ -136,9 +136,43 @@ async function getPlaylistTracks(accessToken, playlistId) {
   }
 }
 
+/**
+ * Searches for tracks on Spotify
+ * @param {string} accessToken - Valid Spotify access token
+ * @param {string} query - Search query
+ * @returns {Promise<Array>} Array of track objects
+ */
+async function searchTracks(accessToken, query) {
+  try {
+    const response = await axios.get('https://api.spotify.com/v1/search', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      params: {
+        q: query,
+        type: 'track',
+        limit: 10, // Limit to 10 results for now
+      },
+    });
+
+    return response.data.tracks.items.map(track => ({
+      id: track.id,
+      uri: track.uri,
+      name: track.name,
+      artist: track.artists.map(a => a.name).join(', '),
+      album: track.album.name,
+      imageUrl: track.album.images[0]?.url || null,
+      duration: track.duration_ms,
+    }));
+  } catch (error) {
+    throw new Error('Failed to search tracks');
+  }
+}
+
 module.exports = {
   exchangeCodeForTokens,
   refreshAccessToken,
   getUserPlaylists,
   getPlaylistTracks,
+  searchTracks, // Export the new function
 };

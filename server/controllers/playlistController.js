@@ -48,4 +48,31 @@ router.get('/playlist-tracks/:playlistId', verifySpotifyAuth, async (req, res) =
   }
 });
 
+/**
+ * Search for tracks on Spotify
+ * Requires authentication
+ */
+router.get('/search-tracks', verifySpotifyAuth, async (req, res) => {
+  try {
+    const { access_token } = req.spotifyAuth;
+    const { query } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    const tracks = await spotifyService.searchTracks(access_token, query);
+
+    res.json({ tracks });
+  } catch (error) {
+    console.error('Error searching tracks:', error);
+
+    if (error.response?.status === 401) {
+      return res.status(401).json({ error: 'Token expired', needsRefresh: true });
+    }
+
+    res.status(500).json({ error: 'Failed to search tracks' });
+  }
+});
+
 module.exports = router;

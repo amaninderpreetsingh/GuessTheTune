@@ -10,6 +10,7 @@ const playlistController = require('./controllers/playlistController');
 const tokenController = require('./controllers/tokenController');
 const playbackController = require('./controllers/playbackController');
 const setupSocketHandlers = require('./controllers/socketController');
+const gameManager = require('./services/gameManager'); // New import
 
 const app = express();
 const server = http.createServer(app);
@@ -68,6 +69,17 @@ app.use('/api', playbackController);
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'GuessTheTune server is running' });
+});
+
+// Endpoint to get a list of active rooms
+app.get('/api/rooms', (req, res) => {
+  try {
+    const roomsInfo = gameManager.getAllRoomsInfo();
+    res.json({ rooms: roomsInfo });
+  } catch (error) {
+    console.error('Error fetching rooms info:', error);
+    res.status(500).json({ error: 'Failed to fetch rooms information' });
+  }
 });
 
 // Setup Socket.io handlers

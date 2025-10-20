@@ -313,6 +313,52 @@ function deleteRoom(roomCode) {
   rooms.delete(roomCode);
 }
 
+/**
+ * Forces a specific track to be the next song
+ * @param {string} roomCode - Room code
+ * @param {Object} track - The track object to play next
+ */
+function forceNextSong(roomCode, track) {
+  const room = rooms.get(roomCode);
+
+  if (!room) {
+    throw new Error('Room not found');
+  }
+
+  if (!room.playlist) {
+    room.playlist = [];
+  }
+
+  // Insert the new track at the current position + 1
+  // This makes it the "next" song to play
+  room.playlist.splice(room.currentTrackIndex + 1, 0, track);
+
+  // Move to the next song (which is now the forced track)
+  room.currentTrackIndex = (room.currentTrackIndex + 1) % room.playlist.length;
+  room.currentGuesser = null;
+  room.gameState = 'playing';
+}
+
+/**
+ * Returns a list of active rooms with basic information.
+ * @returns {Array} Array of room info objects.
+ */
+function getAllRoomsInfo() {
+  const activeRooms = [];
+  for (const [roomCode, room] of rooms.entries()) {
+    activeRooms.push({
+      id: room.id,
+      playerCount: room.players.length,
+      gameState: room.gameState,
+      hostDisplayName: room.players.find(p => p.isHost)?.displayName || 'N/A',
+      currentTrack: room.playlist && room.currentTrackIndex !== undefined && room.playlist[room.currentTrackIndex]
+        ? `${room.playlist[room.currentTrackIndex].name} by ${room.playlist[room.currentTrackIndex].artist}`
+        : 'N/A',
+    });
+  }
+  return activeRooms;
+}
+
 module.exports = {
   createRoom,
   joinRoom,
@@ -325,4 +371,6 @@ module.exports = {
   rejoinAsHost,
   getRoom,
   deleteRoom,
+  forceNextSong,
+  getAllRoomsInfo, // Export the new function
 };
