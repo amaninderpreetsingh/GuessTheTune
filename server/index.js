@@ -19,6 +19,7 @@ const developmentOrigins = [
   'http://127.0.0.1:3000',
   'http://localhost:3000',
   'http://172.23.144.1:3000',
+  'https://guessthetune.pages.dev'
 ];
 
 // In production, CLIENT_URL should be set to your Cloudflare Pages URL

@@ -377,41 +377,6 @@ GuessTheTune/
 
 ---
 
-## 🚀 Future Enhancements
-
-- [ ] **Multiple Game Modes** - Add different difficulty levels and game types
-- [ ] **Leaderboards** - Track top players across all games
-- [ ] **Custom Playlists** - Allow collaborative playlist creation
-- [ ] **Voice Chat** - Integrate WebRTC for in-game communication
-- [ ] **Achievements System** - Unlock badges and rewards
-- [ ] **Mobile App** - Native iOS and Android applications
-- [ ] **AI Opponent** - Single-player mode against computer
-- [ ] **Tournament Mode** - Bracket-style competitions
-- [ ] **Social Sharing** - Share scores on social media
-- [ ] **Analytics Dashboard** - Host insights on player performance
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
----
-
-## 📧 Contact
-
-**Your Name** - [LinkedIn](https://linkedin.com/in/yourprofile) - [Portfolio](https://yourportfolio.com)
-
-Project Link: [https://github.com/yourusername/GuessTheTune](https://github.com/yourusername/GuessTheTune)
-
----
-
 ## 🙏 Acknowledgments
 
 - [Spotify Web API](https://developer.spotify.com/documentation/web-api/) for music integration
@@ -419,6 +384,30 @@ Project Link: [https://github.com/yourusername/GuessTheTune](https://github.com/
 - [React](https://reactjs.org/) and the amazing React community
 - [Tailwind CSS](https://tailwindcss.com/) for utility-first styling
 - [Framer Motion](https://www.framer.com/motion/) for smooth animations
+
+---
+
+## 🐛 Troubleshooting
+
+### CORS Errors
+
+If you encounter CORS (Cross-Origin Resource Sharing) errors when running the application, it means the server is not configured to accept requests from the frontend's origin. This is a common issue when deploying to new environments.
+
+**Solution:**
+
+1.  **Identify the Frontend URL:** Look at the error message in your browser's developer console. It will specify the `origin` that was blocked. For example: `https://<your-frontend-url>.pages.dev`.
+
+2.  **Update Server Configuration:** Open `server/index.js` and add your frontend URL to the `allowedOrigins` or `developmentOrigins` array:
+
+    ```javascript
+    const developmentOrigins = [
+      'http://127.0.0.1:3000',
+      'http://localhost:3000',
+      'https://your-frontend-url.pages.dev' // Add your URL here
+    ];
+    ```
+
+3.  **Restart the Server:** Stop and restart the backend server for the changes to take effect.
 
 ---
 

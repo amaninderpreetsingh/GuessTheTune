@@ -190,7 +190,7 @@ gcloud run services update guessthetune-backend \
 3. Click **"Edit Settings"**
 4. Under **"Redirect URIs"**, add:
    ```
-   https://guessthetune-backend-xxxxx-uc.a.run.app/auth/callback
+   https://guessthetune-backend-313254367359.us-central1.run.app/auth/callback
    ```
    (Replace with your actual Cloud Run URL)
 
@@ -260,7 +260,7 @@ gcloud run services update guessthetune-backend \
 2. Verify it's added to your Spotify app's Redirect URIs (with no trailing slash)
 3. Make sure both use `https://` (not `http://`)
 
-### Backend Not Starting
+### Backend Not Startingx
 
 **Problem**: Cloud Run service fails to deploy or keeps restarting.
 

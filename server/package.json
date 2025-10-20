@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "deploy": "gcloud run deploy guessthetune-backend --source . --platform managed --region us-central1 --allow-unauthenticated --timeout 3600 --max-instances 10 --memory 512Mi"
   },
   "keywords": ["spotify", "music", "trivia", "game", "websocket"],
   "author": "",
