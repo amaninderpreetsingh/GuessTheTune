@@ -363,3 +363,38 @@ git push origin main
 ---
 
 Congrats! Your GuessTheTune game is now live and ready for your friends to play! 🎵🎉
+
+---
+
+## Managing Costs: Stopping and Starting Your Backend
+
+### Understanding Cloud Run's "Scale to Zero"
+The most important feature of Google Cloud Run for cost management is its ability to **scale to zero**.
+
+- **You Pay Only for Usage**: You are not billed for a 24/7 running server. You are billed only for the CPU and memory consumed while your service is actively processing requests.
+- **Automatic Shutdown**: If your service receives no traffic for a few minutes, Cloud Run automatically scales its container count to zero. At this point, it is not consuming resources and you are not being charged.
+- **Automatic Restart**: When a new request comes in, Cloud Run automatically starts a new container to handle it.
+
+For a hobby project, it's very likely you will remain within the generous free tier just by letting the service scale to zero when you're not playing.
+
+### How to Manually "Stop" Your Backend
+If you want to guarantee the service is offline and cannot be started by incoming traffic, you can make it private by removing its public access permissions.
+
+**To make the service private (stop it):**
+```bash
+gcloud run services remove-iam-policy-binding guessthetune-backend \
+  --region=us-central1 \
+  --member=allUsers \
+  --role=roles/run.invoker
+```
+
+### How to Manually "Start" Your Backend
+To bring the service back online, you simply restore the public access permissions. The next request will then start the container automatically.
+
+**To make the service public again (start it):**
+```bash
+gcloud run services add-iam-policy-binding guessthetune-backend \
+  --region=us-central1 \
+  --member=allUsers \
+  --role=roles/run.invoker
+```
