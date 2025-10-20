@@ -1,0 +1,25 @@
+# Node modules (will be installed in container)
+node_modules
+npm-debug.log
+
+# Environment files (set via Cloud Run)
+.env
+.env.local
+.env.*.local
+
+# Git files
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Development files
+nodemon.json
+.vscode
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db

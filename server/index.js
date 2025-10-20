@@ -14,20 +14,29 @@ const gameManager = require('./services/gameManager'); // New import
 
 const app = express();
 const server = http.createServer(app);
+// Configure CORS origins for development and production
+const developmentOrigins = [
+  'http://127.0.0.1:3000',
+  'http://localhost:3000',
+  'http://172.23.144.1:3000',
+];
+
+// In production, CLIENT_URL should be set to your Cloudflare Pages URL
+// Example: https://guessthetune.pages.dev
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.CLIENT_URL].filter(Boolean)
+  : [...developmentOrigins, process.env.CLIENT_URL].filter(Boolean);
+
 const io = socketIo(server, {
   cors: {
     origin: function(origin, callback) {
-      // Allow multiple origins for development
-      const allowedOrigins = [
-        'http://127.0.0.1:3000',
-        'http://localhost:3000',
-        'http://172.23.144.1:3000',
-        process.env.CLIENT_URL,
-      ].filter(Boolean);
+      // Allow requests with no origin (like Postman, mobile apps, etc.)
+      if (!origin) return callback(null, true);
 
-      if (!origin || allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
+        console.warn(`CORS blocked origin: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
@@ -36,22 +45,15 @@ const io = socketIo(server, {
 });
 
 // Middleware
-// Allow multiple origins for development (localhost, 127.0.0.1, and network IPs)
-const allowedOrigins = [
-  'http://127.0.0.1:3000',
-  'http://localhost:3000',
-  'http://172.23.144.1:3000', // Your network IP
-  process.env.CLIENT_URL,
-].filter(Boolean);
-
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin (like Postman, mobile apps, etc.)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.warn(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },

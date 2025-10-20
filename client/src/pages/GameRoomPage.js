@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users as UsersIcon, Music } from 'lucide-react';
+import { Users as UsersIcon } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import PlayerList from '../components/PlayerList';
 import PlaylistSelector from '../components/PlaylistSelector';

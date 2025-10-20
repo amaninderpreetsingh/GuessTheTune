@@ -1,8 +1,29 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useGame } from '../context/GameContext';
 import debounce from 'lodash.debounce';
+
+const debouncedSearch = debounce(async (query, serverUrl, setSearchResults, setLoading, setError) => {
+  if (!query) {
+    setSearchResults([]);
+    return;
+  }
+
+  setLoading(true);
+  setError(null);
+  try {
+    const response = await axios.get(`${serverUrl}/api/search-tracks?query=${query}`, {
+      withCredentials: true,
+    });
+    setSearchResults(response.data.tracks);
+  } catch (err) {
+    console.error('Error searching tracks:', err);
+    setError('Failed to search for tracks. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+}, 500);
 
 const TrackSearch = ({ onTrackSelected }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,31 +34,9 @@ const TrackSearch = ({ onTrackSelected }) => {
 
   const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://127.0.0.1:8080';
 
-
-  const performSearch = useCallback(debounce(async (query) => {
-    if (!query) {
-      setSearchResults([]);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await axios.get(`${serverUrl}/api/search-tracks?query=${query}`, {
-        withCredentials: true,
-      });
-      setSearchResults(response.data.tracks);
-    } catch (err) {
-      console.error('Error searching tracks:', err);
-      setError('Failed to search for tracks. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, 500), []);
-
   useEffect(() => {
-    performSearch(searchTerm);
-  }, [searchTerm, performSearch]);
+    debouncedSearch(searchTerm, serverUrl, setSearchResults, setLoading, setError);
+  }, [searchTerm, serverUrl]);
 
   const handleSelectTrack = (track) => {
     if (socket && roomCode) {
