@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,6 +10,12 @@
   --spotify-green: #1DB954;
   --primary-text: #FFFFFF;
   --secondary-text: #B3B3B3;
+
+  /* New vibrant colors */
+  --neon-purple: #8B5CF6;
+  --neon-pink: #EC4899;
+  --neon-blue: #3B82F6;
+  --neon-orange: #F97316;
 }
 
 * {
@@ -53,18 +61,43 @@ code {
 /* Utility classes */
 @layer components {
   .btn-primary {
-    @apply bg-spotify-green text-white font-semibold py-3 px-8 rounded-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 active:scale-95;
+    @apply bg-gradient-to-r from-spotify-green to-neon-cyan text-white font-semibold py-3 px-8 rounded-lg
+           hover:shadow-glow-green transition-all duration-300 transform hover:scale-105 active:scale-95
+           relative overflow-hidden;
   }
 
   .btn-secondary {
-    @apply bg-secondary-bg text-primary-text font-semibold py-3 px-8 rounded-lg hover:bg-gray-700 transition-all duration-200 transform hover:scale-105 active:scale-95;
+    @apply bg-gradient-to-r from-neon-purple to-neon-pink text-white font-semibold py-3 px-8 rounded-lg
+           hover:shadow-glow-multi transition-all duration-300 transform hover:scale-105 active:scale-95;
+  }
+
+  .btn-tertiary {
+    @apply bg-secondary-bg/50 backdrop-blur-sm text-primary-text font-semibold py-3 px-8 rounded-lg
+           border border-white/20 hover:bg-secondary-bg/70 hover:border-neon-purple/50
+           transition-all duration-300 transform hover:scale-105 active:scale-95;
   }
 
   .card {
-    @apply bg-secondary-bg rounded-xl p-6 shadow-lg;
+    @apply bg-secondary-bg/80 backdrop-blur-md rounded-xl p-6 shadow-lg
+           border border-white/10 hover:border-white/20 transition-all duration-300;
+  }
+
+  .card-glass {
+    @apply bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md rounded-xl p-6
+           border border-white/20 shadow-glow-multi hover:shadow-glow-purple transition-all duration-300;
   }
 
   .input-field {
-    @apply bg-primary-bg text-primary-text border-2 border-secondary-bg rounded-lg px-4 py-3 focus:outline-none focus:border-spotify-green transition-colors;
+    @apply bg-primary-bg/50 backdrop-blur-sm text-primary-text border-2 border-white/20 rounded-lg px-4 py-3
+           focus:outline-none focus:border-neon-purple focus:shadow-glow-purple transition-all duration-300;
+  }
+
+  .gradient-text {
+    @apply text-neon-purple font-bold;
+    /* No transparency - solid colored text */
+  }
+
+  .glow-effect {
+    @apply shadow-glow-multi animate-glow;
   }
 }

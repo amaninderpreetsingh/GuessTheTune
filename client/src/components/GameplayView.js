@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Music, Play, Pause, SkipForward, ListMusic, AlertCircle, Loader, CheckCircle2, Disc3 } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import useSpotifyPlayer from '../hooks/useSpotifyPlayer';
 import BuzzButton from './BuzzButton';
 import JudgeControls from './JudgeControls';
 import WinnerModal from './WinnerModal';
-import TrackSearch from './TrackSearch'; // New import
+import TrackSearch from './TrackSearch';
 import { SOCKET_EVENTS } from '../utils/constants';
 
 const GameplayView = ({ roomCode, onChangePlaylist }) => {
@@ -229,47 +230,85 @@ const GameplayView = ({ roomCode, onChangePlaylist }) => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="card"
+        className="card-glass"
       >
         <div className="text-center">
           {/* Host Controls */}
           {isHost && (
             <div className="mb-6">
-              <div className="text-sm text-secondary-text mb-2">Host Controls</div>
+              <div className="flex items-center gap-2 justify-center mb-4">
+                <Disc3 className="text-neon-purple" size={20} />
+                <span className="text-sm font-semibold gradient-text">Host Controls</span>
+              </div>
               {currentTrack && (
-                <div className="mb-4">
-                  <p className="text-lg font-bold">{currentTrack.name}</p>
-                  <p className="text-sm text-secondary-text">{currentTrack.artist}</p>
-                </div>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="mb-6 card-glass"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center flex-shrink-0 shadow-glow-purple">
+                      <Music className="text-white" size={32} />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-xl font-bold mb-1 gradient-text">{currentTrack.name}</p>
+                      <p className="text-sm text-secondary-text">{currentTrack.artist}</p>
+                    </div>
+                  </div>
+                </motion.div>
               )}
               {playerError && (
-                <div className="bg-red-500 bg-opacity-20 border border-red-500 rounded-lg p-4 mb-4">
-                  <p className="text-red-400 font-semibold mb-2">Error</p>
-                  <p className="text-sm">{playerError}</p>
-                  <p className="text-xs text-secondary-text mt-2">
-                    Make sure you're logged in with a Spotify Premium account
-                  </p>
-                </div>
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-500/50 rounded-xl p-4 mb-4 backdrop-blur-sm"
+                >
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="text-red-400 flex-shrink-0" size={24} />
+                    <div>
+                      <p className="text-red-400 font-semibold mb-1">Error</p>
+                      <p className="text-sm text-red-300">{playerError}</p>
+                      <p className="text-xs text-secondary-text mt-2">
+                        Make sure you're logged in with a Spotify Premium account
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
               )}
               {!isReady && !playerError && (
-                <p className="text-yellow-400 mb-4">
-                  Initializing Spotify Player...
-                </p>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center justify-center gap-3 text-neon-cyan mb-4"
+                >
+                  <Loader className="animate-spin" size={20} />
+                  <p>Initializing Spotify Player...</p>
+                </motion.div>
               )}
               {isReady && playbackStatus === 'verifying' && (
-                <div className="mb-4">
-                  <p className="text-yellow-400 mb-2">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mb-4 flex flex-col items-center gap-2"
+                >
+                  <Loader className="text-neon-cyan animate-spin" size={24} />
+                  <p className="text-neon-cyan font-semibold">
                     Verifying device is ready...
                   </p>
                   <p className="text-xs text-secondary-text">
                     This may take a few seconds
                   </p>
-                </div>
+                </motion.div>
               )}
               {isReady && playbackStatus === 'starting' && (
-                <p className="text-yellow-400 mb-4">
-                  Starting playback...
-                </p>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center justify-center gap-3 text-neon-purple mb-4"
+                >
+                  <Loader className="animate-spin" size={20} />
+                  <p className="font-semibold">Starting playback...</p>
+                </motion.div>
               )}
               {isReady && playbackStatus === 'verification_failed' && (
                 <div className="bg-red-500 bg-opacity-20 border border-red-500 rounded-lg p-4 mb-4">
@@ -288,59 +327,71 @@ const GameplayView = ({ roomCode, onChangePlaylist }) => {
               )}
               {isReady && playbackStatus === 'playing' && (
                 <>
-                  <p className="text-green-400 mb-3 font-semibold">
-                    🎵 Music is playing!
-                  </p>
-                  <div className="flex justify-center space-x-4 mb-4">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex items-center justify-center gap-2 mb-6"
+                  >
+                    <CheckCircle2 className="text-spotify-green" size={24} />
+                    <p className="text-spotify-green font-semibold text-lg">
+                      Music is playing!
+                    </p>
+                  </motion.div>
+                  <div className="flex justify-center gap-3 mb-4 flex-wrap">
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
+                      whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={handleNextSong}
-                      className="btn-secondary"
+                      className="btn-secondary flex items-center gap-2"
                       disabled={currentGuesser !== null}
                     >
-                      Next Song
+                      <SkipForward size={18} />
+                      <span>Next Song</span>
                     </motion.button>
                     {isPlaying ? (
                       <motion.button
-                        whileHover={{ scale: 1.05 }}
+                        whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handlePauseSong}
-                        className="btn-secondary"
+                        className="btn-secondary flex items-center gap-2"
                         disabled={currentGuesser !== null}
                       >
-                        Pause Song
+                        <Pause size={18} />
+                        <span>Pause</span>
                       </motion.button>
                     ) : (
                       <motion.button
-                        whileHover={{ scale: 1.05 }}
+                        whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleResumeSong}
-                        className="btn-secondary"
+                        className="btn-secondary flex items-center gap-2"
                         disabled={currentGuesser !== null}
                       >
-                        Resume Song
+                        <Play size={18} />
+                        <span>Resume</span>
                       </motion.button>
                     )}
                   </div>
-                  <div className="flex justify-center space-x-4">
+                  <div className="flex justify-center gap-3 flex-wrap">
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
+                      whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setShowTrackSearch(true)}
-                      className="btn-secondary"
+                      className="btn-tertiary flex items-center gap-2"
                       disabled={currentGuesser !== null}
                     >
-                      Choose Next Song
+                      <Music size={18} />
+                      <span>Choose Next Song</span>
                     </motion.button>
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
+                      whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={onChangePlaylist}
-                      className="btn-tertiary"
+                      className="btn-tertiary flex items-center gap-2"
                       disabled={currentGuesser !== null}
                     >
-                      Change Playlist
+                      <ListMusic size={18} />
+                      <span>Change Playlist</span>
                     </motion.button>
                   </div>
                 </>
@@ -412,15 +463,32 @@ const GameplayView = ({ roomCode, onChangePlaylist }) => {
 
           {/* Waiting State */}
           {!currentGuesser && !isHost && !roundResult && (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-4">🎵</div>
-              <p className="text-xl font-semibold mb-2">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-8"
+            >
+              <motion.div
+                animate={{
+                  scale: [1, 1.1, 1],
+                  rotate: [0, 5, -5, 0],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="mb-4"
+              >
+                <Music className="mx-auto text-neon-purple" size={64} />
+              </motion.div>
+              <p className="text-2xl font-bold mb-2 gradient-text">
                 Listen to the music!
               </p>
               <p className="text-secondary-text">
                 Click "I Know It!" when you recognize the song
               </p>
-            </div>
+            </motion.div>
           )}
         </div>
       </motion.div>

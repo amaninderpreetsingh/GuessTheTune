@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { X, UserCircle2, Hash, LogIn, Loader2, AlertCircle } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 
 const JoinGameModal = ({ onClose }) => {
@@ -74,47 +75,56 @@ const JoinGameModal = ({ onClose }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50"
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
           transition={{ type: 'spring', damping: 20 }}
-          className="card max-w-md w-full"
+          className="card-glass max-w-md w-full relative overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Animated gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/20 to-neon-pink/20 -z-10" />
+
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Join a Game</h2>
-            <button
+            <h2 className="text-3xl font-display font-bold gradient-text">Join a Game</h2>
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
               onClick={onClose}
-              className="text-secondary-text hover:text-primary-text transition-colors text-2xl"
+              className="text-secondary-text hover:text-neon-pink transition-colors p-1 rounded-lg hover:bg-white/10"
               disabled={isJoining}
             >
-              ×
-            </button>
+              <X size={24} />
+            </motion.button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="flex items-center gap-2 text-sm font-semibold mb-3 text-neon-purple">
+                <UserCircle2 size={18} />
                 Display Name
               </label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Enter your name"
-                className="input-field w-full"
-                maxLength={20}
-                disabled={isJoining}
-                autoFocus
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="input-field w-full pl-4"
+                  maxLength={20}
+                  disabled={isJoining}
+                  autoFocus
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="flex items-center gap-2 text-sm font-semibold mb-3 text-neon-pink">
+                <Hash size={18} />
                 Room Code
               </label>
               <input
@@ -122,7 +132,7 @@ const JoinGameModal = ({ onClose }) => {
                 value={roomCode}
                 onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                 placeholder="ABCD"
-                className="input-field w-full uppercase text-center text-2xl tracking-widest"
+                className="input-field w-full uppercase text-center text-3xl font-bold tracking-[0.5em] font-display"
                 maxLength={4}
                 disabled={isJoining}
               />
@@ -132,26 +142,32 @@ const JoinGameModal = ({ onClose }) => {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-red-500 bg-opacity-20 border border-red-500 rounded-lg p-3 text-sm"
+                className="bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-500/50 rounded-xl p-4 backdrop-blur-sm"
               >
-                {error}
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+                  <p className="text-sm text-red-300">{error}</p>
+                </div>
               </motion.div>
             )}
 
             <motion.button
-              whileHover={!isJoining ? { scale: 1.02 } : {}}
+              whileHover={!isJoining ? { scale: 1.02, y: -2 } : {}}
               whileTap={!isJoining ? { scale: 0.98 } : {}}
               type="submit"
-              className="btn-primary w-full"
+              className="btn-primary w-full text-lg py-4 relative overflow-hidden"
               disabled={isJoining}
             >
               {isJoining ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Spinner />
-                  Joining...
+                <span className="flex items-center justify-center gap-3">
+                  <Loader2 className="animate-spin" size={20} />
+                  <span>Joining...</span>
                 </span>
               ) : (
-                'Join Game'
+                <span className="flex items-center justify-center gap-2">
+                  <LogIn size={20} />
+                  <span>Join Game</span>
+                </span>
               )}
             </motion.button>
           </form>

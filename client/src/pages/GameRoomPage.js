@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Users as UsersIcon, Music } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import PlayerList from '../components/PlayerList';
 import PlaylistSelector from '../components/PlaylistSelector';
 import GameplayView from '../components/GameplayView';
+import AnimatedBackground from '../components/AnimatedBackground';
+import FloatingMusicNotes from '../components/FloatingMusicNotes';
 
 const GameRoomPage = () => {
   const { roomCode: urlRoomCode } = useParams();
@@ -97,8 +100,11 @@ const GameRoomPage = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen p-4 md:p-8 relative">
+      <AnimatedBackground variant="music" />
+      <FloatingMusicNotes />
+
+      <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -106,12 +112,20 @@ const GameRoomPage = () => {
           className="mb-8 flex justify-between items-center"
         >
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold">GuessTheTune</h1>
-            <p className="text-secondary-text">Room: {roomCode}</p>
+            <h1 className="text-3xl md:text-5xl font-display font-bold bg-gradient-to-r from-neon-purple to-neon-pink bg-clip-text text-transparent tracking-wider">GuessTheTune</h1>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-secondary-text text-sm">Room:</span>
+              <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-neon-purple to-neon-pink bg-clip-text text-transparent tracking-wider">
+                {roomCode}
+              </span>
+            </div>
           </div>
-          <div className="card py-2 px-4">
-            <p className="text-sm text-secondary-text">Players</p>
-            <p className="text-2xl font-bold">{players.length}</p>
+          <div className="card-glass py-3 px-6">
+            <div className="flex items-center gap-2 mb-1">
+              <UsersIcon className="text-neon-purple" size={20} />
+              <p className="text-sm text-secondary-text">Players</p>
+            </div>
+            <p className="text-3xl font-bold gradient-text text-center">{players.length}</p>
           </div>
         </motion.div>
 

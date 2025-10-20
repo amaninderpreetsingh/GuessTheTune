@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mic2, Gamepad2, Music, Zap, Users, Sparkles } from 'lucide-react';
 import JoinGameModal from '../components/JoinGameModal';
-import AnimatedBackground from '../components/AnimatedBackground';
-import FloatingMusicNotes from '../components/FloatingMusicNotes';
 
 const HomePage = () => {
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -20,15 +17,12 @@ const HomePage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
-      <AnimatedBackground variant="primary" />
-      <FloatingMusicNotes />
-
+    <div className="min-h-screen flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="text-center max-w-4xl w-full relative z-10"
+        className="text-center max-w-2xl w-full"
       >
         {/* Logo/Title */}
         <motion.div
@@ -37,24 +31,10 @@ const HomePage = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mb-12"
         >
-          <motion.div
-            className="inline-block mb-6"
-            animate={{
-              rotate: [0, 5, -5, 0],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            <Sparkles className="text-neon-pink mx-auto" size={48} />
-          </motion.div>
-
-          <h1 className="text-6xl md:text-8xl font-display font-bold mb-4 gradient-text animate-gradient">
+          <h1 className="text-6xl md:text-7xl font-bold mb-4 bg-gradient-to-r from-spotify-green to-green-400 bg-clip-text text-transparent">
             GuessTheTune
           </h1>
-          <p className="text-secondary-text text-lg md:text-2xl font-medium">
+          <p className="text-secondary-text text-lg md:text-xl">
             A real-time social music trivia game
           </p>
         </motion.div>
@@ -64,28 +44,25 @@ const HomePage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="grid md:grid-cols-3 gap-6 mb-12"
+          className="grid md:grid-cols-3 gap-4 mb-12"
         >
           <FeatureCard
-            Icon={Music}
+            icon="🎵"
             title="Your Music"
             description="Play with your Spotify playlists"
             delay={0.5}
-            gradient="from-neon-purple to-neon-pink"
           />
           <FeatureCard
-            Icon={Zap}
+            icon="⚡"
             title="Real-time"
             description="Race to buzz in first"
             delay={0.6}
-            gradient="from-neon-blue to-neon-cyan"
           />
           <FeatureCard
-            Icon={Users}
+            icon="👥"
             title="Multiplayer"
             description="Play with friends"
             delay={0.7}
-            gradient="from-neon-pink to-neon-orange"
           />
         </motion.div>
 
@@ -94,25 +71,25 @@ const HomePage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
-          className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16"
+          className="flex flex-col sm:flex-row gap-4 justify-center items-center"
         >
           <motion.button
-            whileHover={{ scale: 1.05, y: -5 }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleHostGame}
-            className="btn-primary w-full sm:w-auto min-w-[220px] flex items-center justify-center gap-3 text-lg py-4 px-10"
+            className="btn-primary w-full sm:w-auto min-w-[200px] flex items-center justify-center gap-2"
           >
-            <Mic2 size={24} />
+            <span className="text-2xl">🎤</span>
             <span>Host a Game</span>
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.05, y: -5 }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleJoinGame}
-            className="btn-secondary w-full sm:w-auto min-w-[220px] flex items-center justify-center gap-3 text-lg py-4 px-10"
+            className="btn-secondary w-full sm:w-auto min-w-[200px] flex items-center justify-center gap-2"
           >
-            <Gamepad2 size={24} />
+            <span className="text-2xl">🎮</span>
             <span>Join a Game</span>
           </motion.button>
         </motion.div>
@@ -122,10 +99,10 @@ const HomePage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="card-glass"
+          className="mt-16"
         >
-          <h2 className="text-3xl font-display font-bold mb-8 gradient-text">How to Play</h2>
-          <div className="grid md:grid-cols-4 gap-8">
+          <h2 className="text-2xl font-bold mb-6">How to Play</h2>
+          <div className="grid md:grid-cols-4 gap-6">
             <Step number="1" text="Host creates a room with their Spotify playlist" />
             <Step number="2" text="Players join with a room code" />
             <Step number="3" text="Buzz in and guess the song title" />
@@ -142,36 +119,26 @@ const HomePage = () => {
   );
 };
 
-const FeatureCard = ({ Icon, title, description, delay, gradient }) => (
+const FeatureCard = ({ icon, title, description, delay }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay }}
-    whileHover={{ y: -8, scale: 1.02 }}
-    className="card-glass group cursor-pointer"
+    className="card hover:bg-gray-700 transition-colors"
   >
-    <motion.div
-      className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center mx-auto mb-4 shadow-glow-multi`}
-      whileHover={{ rotate: 360 }}
-      transition={{ duration: 0.6 }}
-    >
-      <Icon className="text-white" size={32} />
-    </motion.div>
-    <h3 className="font-display font-semibold text-lg mb-2">{title}</h3>
-    <p className="text-secondary-text text-sm leading-relaxed">{description}</p>
+    <div className="text-4xl mb-2">{icon}</div>
+    <h3 className="font-semibold mb-1">{title}</h3>
+    <p className="text-secondary-text text-sm">{description}</p>
   </motion.div>
 );
 
 const Step = ({ number, text }) => (
-  <motion.div
-    className="flex flex-col items-center text-center"
-    whileHover={{ scale: 1.05 }}
-  >
-    <div className="w-14 h-14 rounded-full bg-gradient-to-r from-neon-purple to-neon-pink flex items-center justify-center font-bold text-2xl mb-4 shadow-glow-purple">
+  <div className="flex flex-col items-center text-center">
+    <div className="w-12 h-12 rounded-full bg-spotify-green flex items-center justify-center font-bold text-xl mb-3">
       {number}
     </div>
-    <p className="text-secondary-text text-sm leading-relaxed">{text}</p>
-  </motion.div>
+    <p className="text-secondary-text text-sm">{text}</p>
+  </div>
 );
 
 export default HomePage;
