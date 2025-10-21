@@ -2,17 +2,34 @@ const spotifyService = require('../services/spotifyService');
 
 /**
  * Middleware to verify Spotify authentication
- * Checks for valid auth cookie, auto-refreshes expired tokens
+ * Checks for Authorization header (preferred) or auth cookie (fallback)
+ * Auto-refreshes expired tokens
  */
 async function verifySpotifyAuth(req, res, next) {
   try {
-    const authCookie = req.cookies.spotify_auth;
+    let authData = null;
 
-    if (!authCookie) {
-      return res.status(401).json({ error: 'Not authenticated' });
+    // First, try to get token from Authorization header (works on mobile Safari)
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+      try {
+        // Token from header is expected to be the full auth data JSON
+        authData = JSON.parse(decodeURIComponent(token));
+      } catch (e) {
+        // If parsing fails, treat it as just the access_token
+        authData = { access_token: token };
+      }
     }
 
-    let authData = JSON.parse(authCookie);
+    // Fallback to cookie-based auth (backward compatibility)
+    if (!authData) {
+      const authCookie = req.cookies.spotify_auth;
+      if (!authCookie) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      authData = JSON.parse(authCookie);
+    }
 
     if (!authData.access_token || !authData.refresh_token) {
       return res.status(401).json({ error: 'Invalid authentication data' });
@@ -44,7 +61,7 @@ async function verifySpotifyAuth(req, res, next) {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           maxAge: 3600000,
-          sameSite: 'lax',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         });
 
         console.log('Token refreshed automatically in middleware');
