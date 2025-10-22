@@ -100,7 +100,7 @@ function setupSocketHandlers(io) {
      * Start the game
      * Only the host can start the game
      */
-    socket.on('startGame', ({ roomCode, playlist, shuffle }) => {
+    socket.on('startGame', ({ roomCode, playlist, shuffle, rotateJudge }) => {
       const room = gameManager.getRoom(roomCode);
 
       if (!room) {
@@ -111,7 +111,7 @@ function setupSocketHandlers(io) {
         return;
       }
 
-      gameManager.startGame(roomCode, playlist, shuffle);
+      gameManager.startGame(roomCode, playlist, shuffle, rotateJudge);
 
       // Notify all players in the room
       io.to(roomCode).emit('gameStarted', {

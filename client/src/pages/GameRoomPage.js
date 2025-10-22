@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users as UsersIcon } from 'lucide-react';
+import { Users as UsersIcon, Crown, RefreshCw } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import PlayerList from '../components/PlayerList';
 import PlaylistSelector from '../components/PlaylistSelector';
@@ -27,6 +27,7 @@ const GameRoomPage = () => {
   const [playlistTracks, setPlaylistTracks] = useState([]);
   const [currentView, setCurrentView] = useState('playlist'); // playlist, playing
   const [shufflePlaylist, setShufflePlaylist] = useState(true); // New state for shuffling
+  const [rotateJudge, setRotateJudge] = useState(false); // State for judge rotation
 
   const roomCode = globalRoomCode || urlRoomCode;
 
@@ -90,12 +91,13 @@ const GameRoomPage = () => {
       return;
     }
 
-    console.log('Emitting startGame event with:', { roomCode, playlist: playlistTracks.length, shuffle: shufflePlaylist });
+    console.log('Emitting startGame event with:', { roomCode, playlist: playlistTracks.length, shuffle: shufflePlaylist, rotateJudge });
     // Emit start game event
     socket.emit('startGame', {
       roomCode,
       playlist: playlistTracks,
       shuffle: shufflePlaylist, // Include shuffle preference
+      rotateJudge, // Include judge rotation preference
     });
   };
 
@@ -151,16 +153,75 @@ const GameRoomPage = () => {
                       animate={{ opacity: 1, y: 0 }}
                       className="mt-6 text-center"
                     >
-                      <label className="inline-flex items-center cursor-pointer mb-4">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={shufflePlaylist}
-                          onChange={(e) => setShufflePlaylist(e.target.checked)}
-                        />
-                        <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-spotify-green-light dark:peer-focus:ring-spotify-green rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-spotify-green"></div>
-                        <span className="ms-3 text-lg font-medium text-white">Shuffle Playlist</span>
-                      </label>
+                      <div className="flex flex-col gap-6 mb-6">
+                        {/* Shuffle Playlist Toggle */}
+                        <label className="inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={shufflePlaylist}
+                            onChange={(e) => setShufflePlaylist(e.target.checked)}
+                          />
+                          <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-spotify-green-light dark:peer-focus:ring-spotify-green rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-spotify-green"></div>
+                          <span className="ms-3 text-lg font-medium text-white">Shuffle Playlist</span>
+                        </label>
+
+                        {/* Judge Mode Card Selection */}
+                        <div>
+                          <h3 className="text-lg font-semibold text-white mb-3 text-center">Judge Mode</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Host is Judge Card */}
+                            <motion.div
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => setRotateJudge(false)}
+                              className={`cursor-pointer p-4 rounded-lg card-glass transition-all ${
+                                !rotateJudge
+                                  ? 'ring-2 ring-neon-purple shadow-[0_0_20px_rgba(168,85,247,0.4)]'
+                                  : 'hover:ring-1 hover:ring-gray-500'
+                              }`}
+                            >
+                              <div className="flex flex-col items-center text-center gap-2">
+                                <Crown
+                                  size={32}
+                                  className={!rotateJudge ? 'text-neon-purple' : 'text-gray-400'}
+                                />
+                                <h4 className={`font-bold text-lg ${!rotateJudge ? 'text-white' : 'text-gray-300'}`}>
+                                  Host is Judge
+                                </h4>
+                                <p className="text-sm text-gray-400">
+                                  The host judges all rounds
+                                </p>
+                              </div>
+                            </motion.div>
+
+                            {/* Rotate Judge Card */}
+                            <motion.div
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => setRotateJudge(true)}
+                              className={`cursor-pointer p-4 rounded-lg card-glass transition-all ${
+                                rotateJudge
+                                  ? 'ring-2 ring-neon-pink shadow-[0_0_20px_rgba(236,72,153,0.4)]'
+                                  : 'hover:ring-1 hover:ring-gray-500'
+                              }`}
+                            >
+                              <div className="flex flex-col items-center text-center gap-2">
+                                <RefreshCw
+                                  size={32}
+                                  className={rotateJudge ? 'text-neon-pink' : 'text-gray-400'}
+                                />
+                                <h4 className={`font-bold text-lg ${rotateJudge ? 'text-white' : 'text-gray-300'}`}>
+                                  Rotate Judge
+                                </h4>
+                                <p className="text-sm text-gray-400">
+                                  Judge rotates after each correct guess
+                                </p>
+                              </div>
+                            </motion.div>
+                          </div>
+                        </div>
+                      </div>
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

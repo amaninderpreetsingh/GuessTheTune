@@ -10,7 +10,7 @@ import TrackSearch from './TrackSearch';
 import { SOCKET_EVENTS } from '../utils/constants';
 
 const GameplayView = ({ roomCode, onChangePlaylist }) => {
-  const { socket, isHost, players, setPlayers, room, setRoom } = useGame();
+  const { socket, isHost, players, setPlayers, room, setRoom, displayName } = useGame();
   const [currentGuesser, setCurrentGuesser] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [winner, setWinner] = useState(null);
@@ -39,9 +39,10 @@ const GameplayView = ({ roomCode, onChangePlaylist }) => {
     resumePlayback,
   } = useSpotifyPlayer(isHost);
 
-  // The host is always the judge
-  const isJudge = isHost;
-  const canBuzzIn = !isHost && !currentGuesser;
+  // Dynamically determine if current player is the judge
+  const currentJudge = room?.players?.[room.currentJudgeIndex];
+  const isJudge = currentJudge?.socketId === socket?.id;
+  const canBuzzIn = !isJudge && !currentGuesser;
 
   // Start playback when Spotify player is ready (host only)
   useEffect(() => {
@@ -226,6 +227,23 @@ const GameplayView = ({ roomCode, onChangePlaylist }) => {
 
   return (
     <div className="space-y-6">
+      {/* Player Info Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="card-glass text-center py-3"
+      >
+        <div className="flex items-center justify-center gap-3">
+          <div className="text-2xl">{isJudge ? '⚖️' : '🎮'}</div>
+          <div>
+            <p className="text-lg font-bold gradient-text">{displayName}</p>
+            <p className="text-xs text-secondary-text">
+              {isJudge ? 'You are the Judge' : 'Player'}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Game Status Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -233,30 +251,38 @@ const GameplayView = ({ roomCode, onChangePlaylist }) => {
         className="card-glass"
       >
         <div className="text-center">
-          {/* Host Controls */}
+          {/* Judge Info - Shows song to the judge */}
+          {isJudge && currentTrack && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 justify-center mb-4">
+                <Disc3 className="text-neon-purple" size={20} />
+                <span className="text-sm font-semibold gradient-text">Judge Info</span>
+              </div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-6 card-glass"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center flex-shrink-0 shadow-glow-purple">
+                    <Music className="text-white" size={32} />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-xl font-bold mb-1 gradient-text">{currentTrack.name}</p>
+                    <p className="text-sm text-secondary-text">{currentTrack.artist}</p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Host Controls - Spotify player controls */}
           {isHost && (
             <div className="mb-6">
               <div className="flex items-center gap-2 justify-center mb-4">
                 <Disc3 className="text-neon-purple" size={20} />
-                <span className="text-sm font-semibold gradient-text">Host Controls</span>
+                <span className="text-sm font-semibold gradient-text">Music Player</span>
               </div>
-              {currentTrack && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="mb-6 card-glass"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center flex-shrink-0 shadow-glow-purple">
-                      <Music className="text-white" size={32} />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-xl font-bold mb-1 gradient-text">{currentTrack.name}</p>
-                      <p className="text-sm text-secondary-text">{currentTrack.artist}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
               {playerError && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}

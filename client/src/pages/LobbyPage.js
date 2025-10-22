@@ -13,6 +13,7 @@ const LobbyPage = () => {
     roomCode,
     players,
     setPlayers,
+    setDisplayName: setGlobalDisplayName,
   } = useGame();
 
   const [displayName, setDisplayName] = useState('');
@@ -40,6 +41,7 @@ const LobbyPage = () => {
     socket.on('roomCreated', ({ roomCode, room }) => {
       setRoomCode(roomCode);
       setPlayers(room.players);
+      setGlobalDisplayName(displayName.trim());
       setShowNameInput(false);
       setIsCreatingRoom(false);
     });
@@ -66,7 +68,7 @@ const LobbyPage = () => {
       socket.off('playerLeft');
       socket.off('error');
     };
-  }, [socket, setRoomCode, setPlayers]);
+  }, [socket, setRoomCode, setPlayers, setGlobalDisplayName, displayName]);
 
   const handleCreateRoom = (e) => {
     e.preventDefault();

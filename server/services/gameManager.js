@@ -49,6 +49,7 @@ function createRoom(hostSocketId, hostDisplayName) {
     currentTrackIndex: 0,
     currentGuesser: null,
     currentJudgeIndex: 0, // Host is always the judge
+    rotateJudge: false, // Whether to rotate judge after each correct guess
     createdAt: Date.now(),
   };
 
@@ -94,8 +95,10 @@ function joinRoom(roomCode, socketId, displayName) {
  * Starts the game
  * @param {string} roomCode - Room code
  * @param {Array} playlist - Array of track objects
+ * @param {boolean} shuffle - Whether to shuffle the playlist
+ * @param {boolean} rotateJudge - Whether to rotate judge after each correct guess
  */
-function startGame(roomCode, playlist, shuffle = true) { // Added shuffle parameter with default true
+function startGame(roomCode, playlist, shuffle = true, rotateJudge = false) {
   const room = rooms.get(roomCode);
 
   if (!room) {
@@ -111,6 +114,7 @@ function startGame(roomCode, playlist, shuffle = true) { // Added shuffle parame
   room.gameState = 'playing';
   room.playlist = finalPlaylist;
   room.currentTrackIndex = 0;
+  room.rotateJudge = rotateJudge;
 }
 
 /**
@@ -203,6 +207,11 @@ function submitJudgment(roomCode, judgeSocketId, isCorrect) {
         winner: guesser,
         room,
       };
+    }
+
+    // Rotate judge if enabled (after correct guess only)
+    if (room.rotateJudge) {
+      room.currentJudgeIndex = (room.currentJudgeIndex + 1) % room.players.length;
     }
   }
 
