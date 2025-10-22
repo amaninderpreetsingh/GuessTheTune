@@ -53,7 +53,7 @@ router.get('/callback', async (req, res) => {
       issued_at: Date.now(),
     };
 
-    // Store tokens in httpOnly cookie for security
+    // Store tokens in httpOnly cookie for security (backward compatibility)
     res.cookie('spotify_auth', JSON.stringify(tokenDataWithTimestamp), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -62,8 +62,17 @@ router.get('/callback', async (req, res) => {
     });
 
     console.log('Tokens stored with expiration tracking');
-    // Redirect back to client with success
-    res.redirect(`${process.env.CLIENT_URL}/lobby?host=true`);
+
+    // Also send tokens in URL for mobile Safari compatibility (it blocks cross-origin cookies)
+    const authParams = new URLSearchParams({
+      access_token: tokenDataWithTimestamp.access_token,
+      refresh_token: tokenDataWithTimestamp.refresh_token,
+      expires_in: tokenDataWithTimestamp.expires_in.toString(),
+      token_type: tokenDataWithTimestamp.token_type,
+    });
+
+    // Redirect back to client with success and token data
+    res.redirect(`${process.env.CLIENT_URL}/lobby?host=true&${authParams.toString()}`);
   } catch (error) {
     console.error('Token exchange error:', error);
     res.redirect(`${process.env.CLIENT_URL}/?error=token_exchange_failed`);

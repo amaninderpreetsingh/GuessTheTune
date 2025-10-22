@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useGame } from '../context/GameContext';
+import { getAuthData } from '../utils/authStorage';
 import debounce from 'lodash.debounce';
 
-const debouncedSearch = debounce(async (query, serverUrl, setSearchResults, setLoading, setError) => {
+const debouncedSearch = debounce(async (query, serverUrl, getAuthHeaders, setSearchResults, setLoading, setError) => {
   if (!query) {
     setSearchResults([]);
     return;
@@ -14,7 +15,8 @@ const debouncedSearch = debounce(async (query, serverUrl, setSearchResults, setL
   setError(null);
   try {
     const response = await axios.get(`${serverUrl}/api/search-tracks?query=${query}`, {
-      withCredentials: true,
+      withCredentials: true, // Still send cookies for backward compatibility
+      headers: getAuthHeaders(), // Add Authorization header for mobile Safari
     });
     setSearchResults(response.data.tracks);
   } catch (err) {
@@ -34,9 +36,21 @@ const TrackSearch = ({ onTrackSelected }) => {
 
   const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://127.0.0.1:8080';
 
+  // Helper to get auth headers
+  const getAuthHeaders = useCallback(() => {
+    const authData = getAuthData();
+    if (!authData) {
+      return {};
+    }
+    // Send full auth data as Bearer token
+    return {
+      'Authorization': `Bearer ${encodeURIComponent(JSON.stringify(authData))}`,
+    };
+  }, []);
+
   useEffect(() => {
-    debouncedSearch(searchTerm, serverUrl, setSearchResults, setLoading, setError);
-  }, [searchTerm, serverUrl]);
+    debouncedSearch(searchTerm, serverUrl, getAuthHeaders, setSearchResults, setLoading, setError);
+  }, [searchTerm, serverUrl, getAuthHeaders]);
 
   const handleSelectTrack = (track) => {
     if (socket && roomCode) {

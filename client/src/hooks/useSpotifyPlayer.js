@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { getAuthData } from '../utils/authStorage';
 
 /**
  * Custom hook for Spotify Web Playback SDK
@@ -16,18 +17,31 @@ const useSpotifyPlayer = (isHost) => {
   const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://127.0.0.1:8080';
   const DEVICE_NAME = 'GuessTheTune Player';
 
+  // Helper to get auth headers
+  const getAuthHeaders = useCallback(() => {
+    const authData = getAuthData();
+    if (!authData) {
+      return {};
+    }
+    // Send full auth data as Bearer token
+    return {
+      'Authorization': `Bearer ${encodeURIComponent(JSON.stringify(authData))}`,
+    };
+  }, []);
+
   // Helper function to get access token from server
   const getAccessToken = useCallback(async () => {
     try {
       const response = await axios.get(`${serverUrl}/api/token`, {
-        withCredentials: true,
+        withCredentials: true, // Still send cookies for backward compatibility
+        headers: getAuthHeaders(), // Add Authorization header for mobile Safari
       });
       return response.data.access_token;
     } catch (err) {
       console.error('Error fetching access token:', err);
       return null;
     }
-  }, [serverUrl]);
+  }, [serverUrl, getAuthHeaders]);
 
   useEffect(() => {
     // Only initialize for host

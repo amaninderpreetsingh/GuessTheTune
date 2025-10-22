@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGame } from '../context/GameContext';
+import { setAuthData } from '../utils/authStorage';
 
 const LobbyPage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const {
     socket,
@@ -22,6 +23,34 @@ const LobbyPage = () => {
   const [error, setError] = useState('');
 
   const isHost = searchParams.get('host') === 'true';
+
+  // Extract and store auth tokens from URL (after Spotify OAuth redirect)
+  useEffect(() => {
+    const accessToken = searchParams.get('access_token');
+    const refreshToken = searchParams.get('refresh_token');
+    const expiresIn = searchParams.get('expires_in');
+    const tokenType = searchParams.get('token_type');
+
+    if (accessToken && refreshToken) {
+      // Store tokens in localStorage
+      const authData = {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_in: parseInt(expiresIn) || 3600,
+        token_type: tokenType || 'Bearer',
+      };
+
+      setAuthData(authData);
+      console.log('Auth tokens stored in localStorage');
+
+      // Clean up URL by removing token parameters (for security)
+      const newSearchParams = new URLSearchParams();
+      if (isHost) {
+        newSearchParams.set('host', 'true');
+      }
+      setSearchParams(newSearchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, isHost]);
 
   useEffect(() => {
     if (isHost) {

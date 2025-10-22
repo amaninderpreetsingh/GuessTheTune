@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { getAuthData } from '../utils/authStorage';
 
 const PlaylistSelector = ({ onPlaylistSelected, selectedPlaylist }) => {
   const [playlists, setPlaylists] = useState([]);
@@ -10,13 +11,26 @@ const PlaylistSelector = ({ onPlaylistSelected, selectedPlaylist }) => {
 
   const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://127.0.0.1:8080';
 
+  // Helper to get auth headers
+  const getAuthHeaders = useCallback(() => {
+    const authData = getAuthData();
+    if (!authData) {
+      return {};
+    }
+    // Send full auth data as Bearer token
+    return {
+      'Authorization': `Bearer ${encodeURIComponent(JSON.stringify(authData))}`,
+    };
+  }, []);
+
   const fetchPlaylists = useCallback(async () => {
     try {
       setIsLoading(true);
       setError('');
 
       const response = await axios.get(`${serverUrl}/api/playlists`, {
-        withCredentials: true,
+        withCredentials: true, // Still send cookies for backward compatibility
+        headers: getAuthHeaders(), // Add Authorization header for mobile Safari
       });
 
       setPlaylists(response.data.playlists);
@@ -31,7 +45,7 @@ const PlaylistSelector = ({ onPlaylistSelected, selectedPlaylist }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [serverUrl]);
+  }, [serverUrl, getAuthHeaders]);
 
   useEffect(() => {
     fetchPlaylists();
@@ -49,7 +63,8 @@ const PlaylistSelector = ({ onPlaylistSelected, selectedPlaylist }) => {
       const response = await axios.get(
         `${serverUrl}/api/playlist-tracks/${playlist.id}`,
         {
-          withCredentials: true,
+          withCredentials: true, // Still send cookies for backward compatibility
+          headers: getAuthHeaders(), // Add Authorization header for mobile Safari
         }
       );
 
